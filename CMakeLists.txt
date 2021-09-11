@@ -11,12 +11,14 @@ if(NOT DEFINED LUA_INCLUDE_DIR OR NOT DEFINED LUA_LIBRARIES)
 endif()
 include_directories(${LUA_INCLUDE_DIR})
 
-add_executable(${PROJECT_NAME} main.cpp Response.cpp Response.h servlet.cpp servlet.h Request.cpp Request.h)
+add_executable(${PROJECT_NAME} main.cpp Response.cpp Response.h servlet.cpp servlet.h Request.cpp Request.h Queue.h)
 
 target_link_libraries(${PROJECT_NAME} ${LUA_LIBRARIES})
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 find_package(OpenSSL REQUIRED)
-target_link_libraries(${PROJECT_NAME} OpenSSL::SSL)
+target_link_libraries(${PROJECT_NAME} OpenSSL::SSL Threads::Threads)
 
 file(COPY server DESTINATION .)

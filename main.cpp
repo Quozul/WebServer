@@ -13,7 +13,13 @@ extern "C" {
 
 #include <cstdio>
 #include <cstring>
+#include <thread>
+#include <functional>
+
 #include "servlet.h"
+#include "Queue.h"
+
+#define THREADS 16
 
 int create_socket(int port) {
     int s;
@@ -82,6 +88,13 @@ void configure_context(SSL_CTX *ctx) {
     }
 }
 
+void consume(Queue<serve>& queue) {
+    while (true) {
+        auto item = queue.pop();
+        servelet(item.ssl, item.L, item.addr, item.client);
+    }
+}
+
 int main(int argc, char **argv) {
     int sock;
     SSL_CTX *ctx;
@@ -102,6 +115,14 @@ int main(int argc, char **argv) {
     luaopen_string(L);
     luaopen_math(L);
 
+    Queue<serve> queue;
+
+    std::vector<std::thread> consumers;
+    for (unsigned int i = 0; i < THREADS; ++i) {
+        std::thread consumer(std::bind(&consume, std::ref(queue)));
+        consumers.push_back(std::move(consumer));
+    }
+
     /* Handle connections */
     while (true) {
         struct sockaddr_in addr;
@@ -120,12 +141,9 @@ int main(int argc, char **argv) {
         if (SSL_accept(ssl) <= 0) {
             ERR_print_errors_fp(stderr);
         } else {
-            servelet(ssl, L, addr);
+            serve s(ssl, L, addr, client);
+            queue.push(s);
         }
-
-        SSL_shutdown(ssl);
-        SSL_free(ssl);
-        close(client);
     }
 
     close(sock);
