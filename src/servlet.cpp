@@ -1,14 +1,14 @@
 #include "servlet.h"
 
-void servelet(SSL *ssl, lua_State *L, struct sockaddr_in &addr, int &client) {
+void servelet(serve& s) {
     // Read request
     int read, pending;
     unsigned long received = 0;
     std::string requestString;
     char *buffer = new char[READ_SIZE];
     do {
-        read = SSL_read(ssl, buffer, READ_SIZE);
-        pending = SSL_pending(ssl);
+        read = SSL_read(s.ssl, buffer, READ_SIZE);
+        pending = SSL_pending(s.ssl);
 
         if (read > 0) {
             received += read;
@@ -22,22 +22,35 @@ void servelet(SSL *ssl, lua_State *L, struct sockaddr_in &addr, int &client) {
 
     // Parse request
     Request request(requestString);
-
     Response response;
 
+    std::string reqPath = request.getPath();
+
+    std::filesystem::path path = std::filesystem::path(s.config.at("server"));
+    path += reqPath;
+
     // If file exists
-    std::filesystem::path path = std::filesystem::current_path();
-    path += "/server" + request.getPath();
+    if (std::filesystem::exists(path)) {
+        if (std::filesystem::is_regular_file(path)) {
+            std::ifstream file(path);
+            std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
-    if (std::filesystem::exists(path) && std::filesystem::is_regular_file(path)) {
-        std::ifstream file(path);
-        std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-        response.setBody(contents);
+            response.setHeader("Content-Length", std::to_string(contents.length()));
+            response.setBody(contents);
+        } else if (std::filesystem::is_directory(path)) {
+            // If lua file exists
+            path += "index.lua";
+            if (std::filesystem::exists(path)) {
+                serveLua(response, request, path, s.ssl, s.L);
+            } else {
+                response.setResponseCode(404);
+            }
+        }
     } else {
+        // If lua file exists
         path += ".lua";
         if (std::filesystem::exists(path)) {
-            serveLua(response, request, path, ssl, L);
+            serveLua(response, request, path, s.ssl, s.L);
         } else {
             response.setResponseCode(404);
         }
@@ -51,13 +64,13 @@ void servelet(SSL *ssl, lua_State *L, struct sockaddr_in &addr, int &client) {
         size_t end = std::min(i + READ_SIZE, len);
         int l = static_cast<int>(end - i);
         std::string chunk = str.substr(i, l);
-        SSL_write(ssl, chunk.c_str(), l);
+        SSL_write(s.ssl, chunk.c_str(), l);
     }
 
     // Close connection
-    SSL_shutdown(ssl);
-    SSL_free(ssl);
-    close(client);
+    SSL_shutdown(s.ssl);
+    SSL_free(s.ssl);
+    close(s.client);
 }
 
 void serveLua(Response &response, Request &request, std::filesystem::path &path, SSL *ssl, lua_State *L) {
