@@ -3,6 +3,8 @@
 
 #include <string>
 #include <map>
+#include <regex>
+#include <iostream>
 
 class Request {
 private:
@@ -17,6 +19,9 @@ public:
     const std::string& getHeader(const std::string& key) {
         return headers.at(key);
     };
+    const std::map<std::string, std::string>& getHeaders() {
+        return headers;
+    };
     const std::string& getBody() {
         return body;
     };
@@ -25,6 +30,9 @@ public:
     };
     const std::string& getMethod() {
         return method;
+    };
+    const std::string& getVersion() {
+        return http_version;
     };
 };
 
