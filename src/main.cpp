@@ -1,6 +1,3 @@
-#define NOMINMAX
-#pragma comment(lib, "Ws2_32.lib")
-
 extern "C" {
 #include <lauxlib.h>
 #include <lualib.h>
@@ -13,11 +10,15 @@ extern "C" {
 
 #endif
 
+#define NOMINMAX
+#pragma comment(lib, "Ws2_32.lib")
+
 #include <winsock2.h>
 #include <Ws2tcpip.h>
 typedef int uint;
 
 #include <windows.h>
+#include <openssl/applink.c>
 
 #else
 
@@ -30,7 +31,6 @@ typedef int SOCKET;
 
 #endif
 
-#include <openssl/applink.c>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 }
