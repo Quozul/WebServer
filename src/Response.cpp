@@ -65,7 +65,7 @@ std::map<int, std::string> Response::codes = {
 };
 
 Response::Response() {
-    http_version = "1.0";
+    http_version = "HTTP/1.1";
     response_code = 200;
 }
 
@@ -80,29 +80,19 @@ void Response::setBody(const std::string &b) {
 std::string Response::getHeadersAsString() {
     std::string response;
 
-    response += "HTTP/" + http_version + " " + std::to_string(response_code) + " " + codes.at(response_code) + "\n";
+    response += http_version + " " + std::to_string(response_code) + " " + codes.at(response_code) + "\r\n";
 
     std::map<std::string, std::string>::iterator it, end;
     for (it = headers.begin(), end = headers.end(); it != end; ++it)
-        response += it->first + ": " + it->second + "\n";
+        response += it->first + ": " + it->second + "\r\n";
 
-    response += "\n";
+    response += "\r\n";
 
     return response;
 }
 
 std::string Response::toString() {
-    std::string response;
-
-    response += "HTTP/" + http_version + " " + std::to_string(response_code) + " " + codes.at(response_code) + "\n";
-
-    std::map<std::string, std::string>::iterator it, end;
-    for (it = headers.begin(), end = headers.end(); it != end; ++it)
-        response += it->first + ": " + it->second + "\n";
-
-    response += "\n" + body;
-
-    return response;
+    return getHeadersAsString() + body;
 }
 
 void Response::setResponseCode(const int &code) {

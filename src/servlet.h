@@ -34,5 +34,6 @@ void serveString(serve& s, std::string& str);
 void serveCharArray(serve& s, const char* res, size_t len);
 void serveFile(Response &response, std::string &path, serve& s);
 void serveLua(Response &response, Request &request, std::string &path, serve& s);
+int buildLuaTable(lua_State* L, std::map<std::string, std::string>& map);
 
 #endif //WEBSERVER_SERVLET_H

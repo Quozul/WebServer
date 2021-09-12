@@ -122,8 +122,6 @@ void serveFile(Response &response, std::string &path, serve &s) {
 }
 
 void serveLua(Response &response, Request &request, std::string &path, serve &s) {
-    response.setHeader("Content-Type", "text/html");
-
     int error = luaL_dofile(s.L, path.c_str());
 
     if (error) {
@@ -133,18 +131,30 @@ void serveLua(Response &response, Request &request, std::string &path, serve &s)
 
         // Create the request table
         lua_newtable(s.L);
-        int top = lua_gettop(s.L);
+        int requestLuaTable = lua_gettop(s.L);
 
         std::map<std::string, std::string> headers = request.getHeaders();
-        std::map<std::string, std::string>::iterator it, end;
+        buildLuaTable(s.L, headers);
+        lua_setfield(s.L, requestLuaTable, "headers");
 
-        for (it = headers.begin(); it != headers.end(); ++it) {
-            const char *key = it->first.c_str();
-            const char *value = it->second.c_str();
-            lua_pushlstring(s.L, key, it->first.size());
-            lua_pushlstring(s.L, value, it->second.size());
-            lua_settable(s.L, top);
-        }
+        std::map<std::string, std::string> params = request.getParameters();
+        buildLuaTable(s.L, params);
+        lua_setfield(s.L, requestLuaTable, "params");
+
+        lua_pushstring(s.L, request.getVersion().c_str());
+        lua_setfield(s.L, requestLuaTable, "http_version");
+
+        lua_pushstring(s.L, request.getMethod().c_str());
+        lua_setfield(s.L, requestLuaTable, "method");
+
+        lua_pushstring(s.L, request.getPath().c_str());
+        lua_setfield(s.L, requestLuaTable, "path");
+
+        lua_pushstring(s.L, request.getRawParams().c_str());
+        lua_setfield(s.L, requestLuaTable, "raw_params");
+
+        lua_pushstring(s.L, request.getBody().c_str());
+        lua_setfield(s.L, requestLuaTable, "body");
 
         // Call the function
         if (lua_pcall(s.L, /* Function argument count */ 1, /* Function return count */ 1, 0) != 0) {
@@ -169,4 +179,21 @@ void serveLua(Response &response, Request &request, std::string &path, serve &s)
         // Sends what lua script returned
         serveCharArray(s, res, len);
     }
+}
+
+int buildLuaTable(lua_State* L, std::map<std::string, std::string>& map) {
+    lua_newtable(L);
+    int top = lua_gettop(L);
+
+    std::map<std::string, std::string>::iterator it, end;
+
+    for (it = map.begin(); it != map.end(); ++it) {
+        const char *key = it->first.c_str();
+        const char *value = it->second.c_str();
+        lua_pushlstring(L, key, it->first.size());
+        lua_pushlstring(L, value, it->second.size());
+        lua_settable(L, top);
+    }
+
+    return top;
 }
