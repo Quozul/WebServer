@@ -1,6 +1,6 @@
 #include "servlet.h"
 
-void servelet(serve &s) {
+void servlet(serve &s) {
     // Read request
     int read, pending;
     size_t received = 0;
@@ -27,6 +27,7 @@ void servelet(serve &s) {
     Request request(requestString);
     std::free(readBytes);
     Response response;
+    response.setSSL(s.ssl);
 
     std::string reqPath = request.getPath();
     std::string path = std::filesystem::path(s.config.at("server"));
@@ -68,6 +69,7 @@ void servelet(serve &s) {
     serveString(s, str);
 }
 
+// TODO: Remove either static or non-static duplicate of this function
 void serveString(serve &s, std::string &str) {
     // Convert to char* then send response
     size_t len = str.length();
@@ -82,6 +84,7 @@ void serveString(serve &s, std::string &str) {
     }
 }
 
+// TODO: Remove either static or non-static duplicate of this function
 void serveCharArray(serve &s, const char *res, size_t len) {
     char *buf = new char[READ_SIZE];
 
@@ -153,15 +156,6 @@ void serveLua(Response &response, Request &request, std::string &path, serve &s)
 
         lua_pushlightuserdata(s.L, &response);
 
-        lua_pushcfunction(s.L, setResponseHeader);
-        lua_setglobal(s.L, "setResponseHeader");
-
-        lua_pushcfunction(s.L, getRequestHeaders);
-        lua_setglobal(s.L, "getRequestHeaders");
-
-        lua_pushcfunction(s.L, getRequestParams);
-        lua_setglobal(s.L, "getRequestParams");
-
         // Call the function
         if (lua_pcall(s.L, /* Function argument count */ 2, /* Function return count */ 1, 0) != 0) {
             response.setResponseCode(500);
@@ -177,11 +171,13 @@ void serveLua(Response &response, Request &request, std::string &path, serve &s)
 
         lua_settop(s.L, 0); // Clear lua stack
 
-        response.setHeader("Content-Length", std::to_string(len));
+        if (!response.headers_sent) {
+            response.setHeader("Content-Length", std::to_string(len));
 
-        // Send headers
-        std::string headerString = response.getHeadersAsString();
-        serveString(s, headerString);
+            // Send headers
+            std::string headerString = response.getHeadersAsString();
+            serveString(s, headerString);
+        }
 
         // Sends what lua script returned
         serveCharArray(s, res, len);

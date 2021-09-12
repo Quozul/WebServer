@@ -67,6 +67,7 @@ std::map<int, std::string> Response::codes = {
 Response::Response() {
     http_version = "HTTP/1.1";
     response_code = 200;
+    this->headers.insert({"Server", "WebServer/0.0.1 by Quozul.dev"});
 }
 
 void Response::setHeader(const std::string &key, const std::string &value) {

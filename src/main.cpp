@@ -9,8 +9,6 @@ extern "C" {
 #include <openssl/err.h>
 }
 
-#include <lua.hpp>
-
 #include <cstdio>
 #include <cstring>
 #include <thread>
@@ -93,7 +91,7 @@ void configure_context(SSL_CTX *ctx, const char *cert, const char *key) {
 [[noreturn]] void consume(Queue<serve> &queue) {
     while (true) {
         auto s = queue.pop();
-        servelet(s);
+        servlet(s);
 
         // Close connection
         SSL_shutdown(s.ssl);
@@ -134,6 +132,22 @@ int main() {
     luaopen_io(L);
     luaopen_string(L);
     luaopen_math(L);
+
+    // Set global LUA functions
+    lua_pushcfunction(L, setResponseHeader);
+    lua_setglobal(L, "setResponseHeader");
+
+    lua_pushcfunction(L, sendResponseBody);
+    lua_setglobal(L, "sendResponseBody");
+
+    lua_pushcfunction(L, sendResponseHeaders);
+    lua_setglobal(L, "sendResponseHeaders");
+
+    lua_pushcfunction(L, getRequestHeaders);
+    lua_setglobal(L, "getRequestHeaders");
+
+    lua_pushcfunction(L, getRequestParams);
+    lua_setglobal(L, "getRequestParams");
 
     // Start response threads
     Queue<serve> queue;
