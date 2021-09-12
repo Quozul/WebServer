@@ -4,8 +4,10 @@ Request::Request(const std::string &request) {
     size_t header_block_end = request.find(CRLF_CRLF);
     size_t status_line_end = request.find(CRLF);
 
+    if (header_block_end == std::string::npos && status_line_end == std::string::npos) return;
+
     std::string status_line = request.substr(0, status_line_end);
-    std::string headers = request.substr(status_line_end + CRLF_LEN, header_block_end);
+    this->raw_headers = request.substr(status_line_end + CRLF_LEN, header_block_end);
 
     if (header_block_end != std::string::npos) {
         body = request.substr(header_block_end + CRLF_CRLF_LEN);
@@ -35,18 +37,14 @@ Request::Request(const std::string &request) {
     }
 
     this->http_version = status_line; // Remaining is the http version
+}
 
-    // Parse parameters
-    std::string raw_params = this->raw_params;
-    while ((pos = raw_params.find('&'))) {
-        token = raw_params.substr(0, pos);
-        sep = token.find('=');
-        if (sep != std::string::npos) {
-            this->params.insert({token.substr(0, sep), token.substr(sep + 1)});
-        }
-        raw_params.erase(0, pos + 1);
-        if (pos == std::string::npos) break;
-    }
+void Request::parseHeaders() {
+    if (!this->headers.empty() || this->raw_headers.empty()) return;
+
+    std::string headers = this->raw_headers;
+    size_t pos, sep;
+    std::string token;
 
     // Parse headers
     while ((pos = headers.find(CRLF)) != std::string::npos) {
@@ -56,5 +54,24 @@ Request::Request(const std::string &request) {
             this->headers.insert({token.substr(0, sep), token.substr(sep + 1)});
         }
         headers.erase(0, pos + CRLF_LEN);
+    }
+}
+
+void Request::parseParams() {
+    if (!this->params.empty() || this->raw_params.empty()) return;
+
+    std::string raw_params = this->raw_params;
+    size_t pos, sep;
+    std::string token;
+
+    // Parse parameters
+    while ((pos = raw_params.find('&'))) {
+        token = raw_params.substr(0, pos);
+        sep = token.find('=');
+        if (sep != std::string::npos) {
+            this->params.insert({token.substr(0, sep), token.substr(sep + 1)});
+        }
+        raw_params.erase(0, pos + 1);
+        if (pos == std::string::npos) break;
     }
 }

@@ -17,6 +17,7 @@ private:
 
     std::string path; // Path to the request
     std::map<std::string, std::string> headers; // Headers of the request
+    std::string raw_headers;
     std::map<std::string, std::string> params; // URL parameters after the "?" character in the path
     std::string raw_params; // Raw string after the "?" character in the path
 
@@ -38,6 +39,9 @@ public:
     const std::map<std::string, std::string>& getParameters() {
         return params;
     };
+
+    void parseHeaders();
+    void parseParams();
 
     const std::string& getBody() {
         return body;

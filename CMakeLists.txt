@@ -14,7 +14,7 @@ if(NOT DEFINED LUA_INCLUDE_DIR OR NOT DEFINED LUA_LIBRARIES)
 endif()
 include_directories(${LUA_INCLUDE_DIR})
 
-add_executable(${PROJECT_NAME} src/main.cpp src/Response.cpp src/Response.h src/servlet.cpp src/servlet.h src/Request.cpp src/Request.h src/Queue.h)
+add_executable(${PROJECT_NAME} src/main.cpp src/Response.cpp src/Response.h src/servlet.cpp src/servlet.h src/Request.cpp src/Request.h src/Queue.h src/luaFunctions.h)
 
 target_link_libraries(${PROJECT_NAME} ${LUA_LIBRARIES})
 

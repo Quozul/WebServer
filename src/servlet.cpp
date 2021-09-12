@@ -94,6 +94,8 @@ void serveCharArray(serve &s, const char *res, size_t len) {
 }
 
 void serveFile(Response &response, std::string &path, serve &s) {
+    // TODO: Store file in memory for quick access
+
     // Loop in the file while sending chunks of it
     std::streampos begin, end, cur, len;
     std::ifstream file(path, std::ios::binary);
@@ -127,19 +129,11 @@ void serveLua(Response &response, Request &request, std::string &path, serve &s)
     if (error) {
         response.setResponseCode(500);
     } else {
-        lua_getglobal(s.L, "f");
+        lua_getglobal(s.L, "F");
 
         // Create the request table
         lua_newtable(s.L);
         int requestLuaTable = lua_gettop(s.L);
-
-        std::map<std::string, std::string> headers = request.getHeaders();
-        buildLuaTable(s.L, headers);
-        lua_setfield(s.L, requestLuaTable, "headers");
-
-        std::map<std::string, std::string> params = request.getParameters();
-        buildLuaTable(s.L, params);
-        lua_setfield(s.L, requestLuaTable, "params");
 
         lua_pushstring(s.L, request.getVersion().c_str());
         lua_setfield(s.L, requestLuaTable, "http_version");
@@ -150,14 +144,26 @@ void serveLua(Response &response, Request &request, std::string &path, serve &s)
         lua_pushstring(s.L, request.getPath().c_str());
         lua_setfield(s.L, requestLuaTable, "path");
 
-        lua_pushstring(s.L, request.getRawParams().c_str());
-        lua_setfield(s.L, requestLuaTable, "raw_params");
-
         lua_pushstring(s.L, request.getBody().c_str());
         lua_setfield(s.L, requestLuaTable, "body");
 
+        // Pointer to the request, used for c functions bellow
+        lua_pushlightuserdata(s.L, &request);
+        lua_setfield(s.L, requestLuaTable, "p");
+
+        lua_pushlightuserdata(s.L, &response);
+
+        lua_pushcfunction(s.L, setResponseHeader);
+        lua_setglobal(s.L, "setResponseHeader");
+
+        lua_pushcfunction(s.L, getRequestHeaders);
+        lua_setglobal(s.L, "getRequestHeaders");
+
+        lua_pushcfunction(s.L, getRequestParams);
+        lua_setglobal(s.L, "getRequestParams");
+
         // Call the function
-        if (lua_pcall(s.L, /* Function argument count */ 1, /* Function return count */ 1, 0) != 0) {
+        if (lua_pcall(s.L, /* Function argument count */ 2, /* Function return count */ 1, 0) != 0) {
             response.setResponseCode(500);
         }
 
@@ -168,7 +174,8 @@ void serveLua(Response &response, Request &request, std::string &path, serve &s)
         size_t len;
         const char *res = lua_tolstring(s.L, -1, &len);
         lua_pop(s.L, 1);
-        lua_settop(s.L, 0);
+
+        lua_settop(s.L, 0); // Clear lua stack
 
         response.setHeader("Content-Length", std::to_string(len));
 
@@ -179,21 +186,4 @@ void serveLua(Response &response, Request &request, std::string &path, serve &s)
         // Sends what lua script returned
         serveCharArray(s, res, len);
     }
-}
-
-int buildLuaTable(lua_State* L, std::map<std::string, std::string>& map) {
-    lua_newtable(L);
-    int top = lua_gettop(L);
-
-    std::map<std::string, std::string>::iterator it, end;
-
-    for (it = map.begin(); it != map.end(); ++it) {
-        const char *key = it->first.c_str();
-        const char *value = it->second.c_str();
-        lua_pushlstring(L, key, it->first.size());
-        lua_pushlstring(L, value, it->second.size());
-        lua_settable(L, top);
-    }
-
-    return top;
 }

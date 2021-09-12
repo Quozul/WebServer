@@ -16,6 +16,7 @@ extern "C" {
 
 #include "Response.h"
 #include "Request.h"
+#include "luaFunctions.h"
 
 #define READ_SIZE 1024
 
