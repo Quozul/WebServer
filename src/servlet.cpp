@@ -26,31 +26,35 @@ void servelet(serve& s) {
 
     std::string reqPath = request.getPath();
 
-    std::filesystem::path path = std::filesystem::path(s.config.at("server"));
+    std::string path = std::filesystem::path(s.config.at("server"));
     path += reqPath;
 
     // If file exists
     if (std::filesystem::exists(path)) {
         if (std::filesystem::is_regular_file(path)) {
-            std::ifstream file(path);
-            std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-            response.setHeader("Content-Length", std::to_string(contents.length()));
-            response.setBody(contents);
+            serveFile(response, path);
         } else if (std::filesystem::is_directory(path)) {
-            // If lua file exists
-            path += "index.lua";
-            if (std::filesystem::exists(path)) {
-                serveLua(response, request, path, s.ssl, s.L);
+            std::string filename = "index.lua";
+            if (std::filesystem::exists(path + filename)) {
+                path += filename;
+                // If lua file exists
+                serveLua(response, request, path, s);
             } else {
-                response.setResponseCode(404);
+                filename = "index.html";
+                if (std::filesystem::exists(path + filename)) {
+                    // Serve index/html
+                    path += filename;
+                    serveFile(response, path);
+                } else {
+                    response.setResponseCode(404);
+                }
             }
         }
     } else {
         // If lua file exists
         path += ".lua";
         if (std::filesystem::exists(path)) {
-            serveLua(response, request, path, s.ssl, s.L);
+            serveLua(response, request, path, s);
         } else {
             response.setResponseCode(404);
         }
@@ -73,20 +77,28 @@ void servelet(serve& s) {
     close(s.client);
 }
 
-void serveLua(Response &response, Request &request, std::filesystem::path &path, SSL *ssl, lua_State *L) {
+void serveFile(Response &response, std::string &path) {
+    // Open file as read only
+    std::ifstream file(path);
+    std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    response.setHeader("Content-Length", std::to_string(contents.length()));
+    response.setBody(contents);
+}
+
+void serveLua(Response &response, Request &request, std::string &path, serve s) {
     response.setHeader("Content-Type", "text/html");
 
-    int error = luaL_dofile(L, path.c_str());
+    int error = luaL_dofile(s.L, path.c_str());
 
     if (error) {
-        response.setBody("Lua error");
         response.setResponseCode(500);
     } else {
-        lua_getglobal(L, "f");
+        lua_getglobal(s.L, "f");
 
-        // Push request to LUA
-        lua_newtable(L);
-        int top = lua_gettop(L);
+        // Create the request table
+        lua_newtable(s.L);
+        int top = lua_gettop(s.L);
 
         std::map<std::string, std::string> headers = request.getHeaders();
         std::map<std::string, std::string>::iterator it, end;
@@ -94,27 +106,25 @@ void serveLua(Response &response, Request &request, std::filesystem::path &path,
         for (it = headers.begin(); it != headers.end(); ++it) {
             const char *key = it->first.c_str();
             const char *value = it->second.c_str();
-            lua_pushlstring(L, key, it->first.size());
-            lua_pushlstring(L, value, it->second.size());
-            lua_settable(L, top);
+            lua_pushlstring(s.L, key, it->first.size());
+            lua_pushlstring(s.L, value, it->second.size());
+            lua_settable(s.L, top);
         }
 
-        lua_setglobal(L, "request");
-
-        if (lua_pcall(L, 0, 1, 0) != 0) {
+        // Call the function
+        if (lua_pcall(s.L, /* Function argument count */ 1, /* Function return count */ 1, 0) != 0) {
             response.setResponseCode(500);
         }
 
-        if (!lua_isstring(L, -1)) {
+        // Read the result of the function
+        if (!lua_isstring(s.L, -1)) {
             response.setResponseCode(500);
         }
         size_t len;
-        const char *res = lua_tolstring(L, -1, &len);
-        const std::string str(res);
-        lua_pop(L, 1);
+        const char *res = lua_tolstring(s.L, -1, &len);
+        lua_pop(s.L, 1);
 
         response.setHeader("Content-Length", std::to_string(len));
-
-        response.setBody(str);
+        response.setBody(const_cast<char *>(res));
     }
 }

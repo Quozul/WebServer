@@ -20,16 +20,17 @@ extern "C" {
 #define READ_SIZE 1024
 
 typedef struct serve {
-    serve(SSL* s, lua_State* l, struct sockaddr_in& a, int& c, std::map<std::string, std::string>& o): ssl(s), L(l), addr(a), client(c), config(o) {};
+    serve(SSL* s, lua_State* l, struct sockaddr_in& a, int c, std::map<std::string, std::string>& o): ssl(s), L(l), addr(a), client(c), config(o) {};
 
     SSL* ssl;
     lua_State* L;
     struct sockaddr_in& addr;
-    int& client;
+    int client;
     std::map<std::string, std::string>& config;
 } serve;
 
 void servelet(serve& s);
-void serveLua(Response &response, Request &request, std::filesystem::path &path, SSL* ssl, lua_State * L);
+void serveFile(Response &response, std::string &path);
+void serveLua(Response &response, Request &request, std::string &path, serve s);
 
 #endif //WEBSERVER_SERVLET_H

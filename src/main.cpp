@@ -16,11 +16,12 @@ extern "C" {
 #include <thread>
 #include <functional>
 #include <map>
+#include <csignal>
 
 #include "servlet.h"
 #include "Queue.h"
 
-#define THREADS 16
+#define THREADS 8
 
 int create_socket(int port) {
     int s;
@@ -74,7 +75,7 @@ SSL_CTX *create_context() {
     return ctx;
 }
 
-void configure_context(SSL_CTX *ctx, const char* cert, const char* key) {
+void configure_context(SSL_CTX *ctx, const char *cert, const char *key) {
     SSL_CTX_set_ecdh_auto(ctx, 1);
 
     /* Set the key and cert */
@@ -89,7 +90,7 @@ void configure_context(SSL_CTX *ctx, const char* cert, const char* key) {
     }
 }
 
-void consume(Queue<serve> &queue) {
+[[noreturn]] void consume(Queue<serve> &queue, unsigned int id) {
     while (true) {
         auto item = queue.pop();
         servelet(item);
@@ -109,16 +110,16 @@ int main(int argc, char **argv) {
         }
     }
 
-    int sock;
-    SSL_CTX *ctx;
-
     init_openssl();
-    ctx = create_context();
+    SSL_CTX *ctx = create_context();
 
     configure_context(ctx, config.at("cert").c_str(), config.at("key").c_str());
+    config.erase("cert");
+    config.erase("key");
 
     int port = std::stoi(config.at("port"));
-    sock = create_socket(port);
+    int sockfd = create_socket(port);
+    config.erase("port");
 
     // Initialize lua
     lua_State *L = luaL_newstate();
@@ -133,9 +134,11 @@ int main(int argc, char **argv) {
     Queue<serve> queue;
     std::vector<std::thread> consumers;
     for (unsigned int i = 0; i < THREADS; ++i) {
-        std::thread consumer(std::bind(&consume, std::ref(queue)));
+        std::thread consumer(std::bind(&consume, std::ref(queue), i));
         consumers.push_back(std::move(consumer));
     }
+
+    std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
 
     /* Handle connections */
     while (true) {
@@ -143,10 +146,10 @@ int main(int argc, char **argv) {
         uint len = sizeof(addr);
         SSL *ssl;
 
-        int client = accept(sock, (struct sockaddr *) &addr, &len);
+        int client = accept(sockfd, (struct sockaddr *) &addr, &len);
         if (client < 0) {
             perror("Unable to accept");
-            exit(EXIT_FAILURE);
+            //exit(EXIT_FAILURE);
         }
 
         ssl = SSL_new(ctx);
@@ -160,7 +163,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    close(sock);
+    close(sockfd);
     SSL_CTX_free(ctx);
     cleanup_openssl();
     lua_close(L);
