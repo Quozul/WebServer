@@ -1,10 +1,36 @@
+#define NOMINMAX
+#pragma comment(lib, "Ws2_32.lib")
+
 extern "C" {
 #include <lauxlib.h>
 #include <lualib.h>
 
-#include <unistd.h>
+// https://stackoverflow.com/a/28031039
+#ifdef _WIN32
+#ifndef _WIN32_WINNT
+
+#define _WIN32_WINNT 0x0501
+
+#endif
+
+#include <winsock2.h>
+#include <Ws2tcpip.h>
+typedef int uint;
+
+#include <windows.h>
+
+#else
+
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
+
+typedef int SOCKET;
+
+#endif
+
+#include <openssl/applink.c>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 }
@@ -15,11 +41,41 @@ extern "C" {
 #include <functional>
 #include <map>
 #include <csignal>
+#include <limits>
 
-#include "servlet.h"
-#include "Queue.h"
+#include "servlet.hpp"
+#include "Queue.hpp"
 
-#define THREADS 1
+int sockClose(SOCKET sock) {
+    int status = 0;
+
+#ifdef _WIN32
+    status = shutdown(sock, SD_BOTH);
+    if (status == 0) { status = closesocket(sock); }
+#else
+    status = shutdown(sock, SHUT_RDWR);
+    if (status == 0) { status = close(sock); }
+#endif
+
+    return status;
+}
+
+int sockInit(void) {
+#ifdef _WIN32
+    WSADATA wsa_data;
+    return WSAStartup(MAKEWORD(1, 1), &wsa_data);
+#else
+    return 0;
+#endif
+}
+
+int sockQuit(void) {
+#ifdef _WIN32
+    return WSACleanup();
+#else
+    return 0;
+#endif
+}
 
 int create_socket(int port) {
     int s;
@@ -96,7 +152,7 @@ void configure_context(SSL_CTX *ctx, const char *cert, const char *key) {
         // Close connection
         SSL_shutdown(s.ssl);
         SSL_free(s.ssl);
-        close(s.client);
+        sockClose(s.client);
     }
 }
 
@@ -120,6 +176,7 @@ int main() {
     config.erase("cert");
     config.erase("key");
 
+    sockInit();
     int port = std::stoi(config.at("port"));
     int sockfd = create_socket(port);
     config.erase("port");
@@ -151,12 +208,16 @@ int main() {
 
     // Start response threads
     Queue<serve> queue;
-    for (unsigned int i = 0; i < THREADS; ++i) {
+    int threads = std::stoi(config.at("threads"));
+    for (unsigned int i = 0; i < threads; ++i) {
         std::thread handler(std::bind(&consume, std::ref(queue)));
         handler.detach();
     }
+    config.erase("threads");
 
+#ifndef _WIN32
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
+#endif
 
     /* Handle connections */
     while (true) {
@@ -167,7 +228,7 @@ int main() {
         int client = accept(sockfd, (struct sockaddr *) &addr, &len);
         if (client < 0) {
             perror("Unable to accept");
-            continue;
+            exit(EXIT_FAILURE);
         }
 
         ssl = SSL_new(ctx);
@@ -175,14 +236,23 @@ int main() {
 
         if (SSL_accept(ssl) <= 0) {
             ERR_print_errors_fp(stderr);
-            continue;
-        }
 
-        serve s(ssl, L, addr, client, config);
-        queue.push(s);
+            SSL_shutdown(ssl);
+            SSL_free(ssl);
+            sockClose(client);
+        } else {
+            serve s(ssl, L, client, &config);
+            servlet(s);
+
+            SSL_shutdown(s.ssl);
+            SSL_free(s.ssl);
+            sockClose(s.client);
+            //queue.push(s);
+        }
     }
 
-    close(sockfd);
+    sockClose(sockfd);
+    sockQuit();
     SSL_CTX_free(ctx);
     cleanup_openssl();
     lua_close(L);

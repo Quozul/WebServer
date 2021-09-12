@@ -1,7 +1,7 @@
 // Source: https://juanchopanzacpp.wordpress.com/2013/02/26/concurrent-queue-c11/
 
-#ifndef WEBSERVER_QUEUE_H
-#define WEBSERVER_QUEUE_H
+#ifndef WEBSERVER_QUEUE_HPP
+#define WEBSERVER_QUEUE_HPP
 
 #include <queue>
 #include <thread>
@@ -36,4 +36,4 @@ private:
     std::condition_variable cond_;
 };
 
-#endif //WEBSERVER_QUEUE_H
+#endif //WEBSERVER_QUEUE_HPP

@@ -1,4 +1,4 @@
-#include "Request.h"
+#include "Request.hpp"
 
 Request::Request(const std::string &request) {
     size_t header_block_end = request.find(CRLF_CRLF);
@@ -30,6 +30,8 @@ Request::Request(const std::string &request) {
                 } else {
                     this->path = token;
                 }
+
+                // TODO: Prevent directory traversal attack
 
                 break;
         }

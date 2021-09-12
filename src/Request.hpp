@@ -1,5 +1,5 @@
-#ifndef WEBSERVER_REQUEST_H
-#define WEBSERVER_REQUEST_H
+#ifndef WEBSERVER_REQUEST_HPP
+#define WEBSERVER_REQUEST_HPP
 
 #include <string>
 #include <map>
@@ -61,4 +61,4 @@ public:
 };
 
 
-#endif //WEBSERVER_REQUEST_H
+#endif //WEBSERVER_REQUEST_HPP

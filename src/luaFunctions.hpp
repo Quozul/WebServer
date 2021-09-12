@@ -1,5 +1,7 @@
-#ifndef WEBSERVER_LUAFUNCTIONS_H
-#define WEBSERVER_LUAFUNCTIONS_H
+#ifndef WEBSERVER_LUAFUNCTIONS_HPP
+#define WEBSERVER_LUAFUNCTIONS_HPP
+
+#define NOMINMAX
 
 extern "C" {
 #include <lauxlib.h>
@@ -9,8 +11,8 @@ extern "C" {
 #include <lua.hpp>
 #include <iostream>
 
-#include "Request.h"
-#include "Response.h"
+#include "Request.hpp"
+#include "Response.hpp"
 
 #define READ_SIZE 1024
 
@@ -24,6 +26,8 @@ static void serveCharArray(SSL* ssl, const char *res, size_t len) {
         std::memcpy(buf, res + i, l);
         SSL_write(ssl, buf, l);
     }
+
+    delete[] buf;
 }
 
 // TODO: Remove either static or non-static duplicate of this function
@@ -39,6 +43,8 @@ static void serveString(SSL* ssl, std::string &str) {
         std::memcpy(buf, res + i, l);
         SSL_write(ssl, buf, l);
     }
+
+    delete[] buf;
 }
 
 static int setResponseHeader(lua_State *L) {
@@ -122,4 +128,4 @@ static int getRequestParams(lua_State *L) {
     return 1;
 }
 
-#endif //WEBSERVER_LUAFUNCTIONS_H
+#endif //WEBSERVER_LUAFUNCTIONS_HPP

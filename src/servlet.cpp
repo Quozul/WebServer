@@ -1,36 +1,15 @@
-#include "servlet.h"
+#include "servlet.hpp"
 
 void servlet(serve &s) {
-    // Read request
-    int read, pending;
-    size_t received = 0;
-    char *readBytes = static_cast<char *>(malloc(1));
-    char *buffer = new char[READ_SIZE];
-    do {
-        read = SSL_read(s.ssl, buffer, READ_SIZE);
-        pending = SSL_pending(s.ssl);
+    std::string requestString = readString(s);
 
-        if (read > 0) {
-            readBytes = static_cast<char *>(std::realloc(readBytes, received + read + 1));
-            std::memcpy(readBytes + received, buffer, read);
-            received += read;
-        }
-
-        if (pending == 0) break;
-    } while (true);
-    delete[] buffer;
-
-    *(readBytes + received) = '\0';
-
-    std::string requestString(readBytes);
     // Parse request
     Request request(requestString);
-    std::free(readBytes);
     Response response;
     response.setSSL(s.ssl);
 
     std::string reqPath = request.getPath();
-    std::string path = std::filesystem::path(s.config.at("server"));
+    std::string path = std::string(s.config->at("server"));
     path += reqPath;
 
     // If file exists
@@ -69,8 +48,32 @@ void servlet(serve &s) {
     serveString(s, str);
 }
 
+std::string readString(const serve &s) {
+    // Read request
+    int read, pending;
+    size_t received = 0;
+    char *readBytes = static_cast<char *>(std::malloc(1));
+    char *buffer = new char[READ_SIZE];
+    do {
+        read = SSL_read(s.ssl, buffer, READ_SIZE);
+        pending = SSL_pending(s.ssl);
+
+        readBytes = static_cast<char *>(std::realloc(readBytes, received + read + 1));
+        std::memcpy(readBytes + received, buffer, read);
+        received += read;
+    } while (pending > 0 && read > 0);
+    delete[] buffer;
+
+    *(readBytes + received) = '\0'; // Add end of string byte
+
+    std::string requestString(readBytes);
+    std::free(readBytes);
+
+    return requestString;
+}
+
 // TODO: Remove either static or non-static duplicate of this function
-void serveString(serve &s, std::string &str) {
+void serveString(const serve &s, const std::string &str) {
     // Convert to char* then send response
     size_t len = str.length();
     char *buf = new char[READ_SIZE];
@@ -82,10 +85,12 @@ void serveString(serve &s, std::string &str) {
         std::memcpy(buf, res + i, l);
         SSL_write(s.ssl, buf, l);
     }
+
+    delete[] buf;
 }
 
 // TODO: Remove either static or non-static duplicate of this function
-void serveCharArray(serve &s, const char *res, size_t len) {
+void serveCharArray(const serve &s, const char *res, size_t len) {
     char *buf = new char[READ_SIZE];
 
     for (size_t i = 0; i < len; i += READ_SIZE) {
@@ -94,6 +99,8 @@ void serveCharArray(serve &s, const char *res, size_t len) {
         std::memcpy(buf, res + i, l);
         SSL_write(s.ssl, buf, l);
     }
+
+    delete[] buf;
 }
 
 void serveFile(Response &response, std::string &path, serve &s) {
@@ -112,18 +119,19 @@ void serveFile(Response &response, std::string &path, serve &s) {
     std::string headerString = response.getHeadersAsString();
     serveString(s, headerString);
 
-    char *buf = new char[READ_SIZE];
     if (file.is_open()) {
+        char *buf = new char[READ_SIZE];
+
         do {
-            len = std::min(static_cast<long>(READ_SIZE), end - cur);
+            len = std::min(static_cast<long>(READ_SIZE), static_cast<long>(end - cur));
             file.seekg(cur);
             file.read(buf, len);
             SSL_write(s.ssl, buf, len);
         } while ((cur += READ_SIZE) < end);
+
+        delete[] buf;
         file.close();
     }
-
-    delete[] buf;
 }
 
 void serveLua(Response &response, Request &request, std::string &path, serve &s) {

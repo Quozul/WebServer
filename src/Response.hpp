@@ -1,5 +1,5 @@
-#ifndef WEBSERVER_RESPONSE_H
-#define WEBSERVER_RESPONSE_H
+#ifndef WEBSERVER_RESPONSE_HPP
+#define WEBSERVER_RESPONSE_HPP
 
 #include <string>
 #include <map>
@@ -48,4 +48,4 @@ public:
 };
 
 
-#endif //WEBSERVER_RESPONSE_H
+#endif //WEBSERVER_RESPONSE_HPP
