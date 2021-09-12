@@ -30,7 +30,9 @@ typedef struct serve {
 } serve;
 
 void servelet(serve& s);
-void serveFile(Response &response, std::string &path);
-void serveLua(Response &response, Request &request, std::string &path, serve s);
+void serveString(serve& s, std::string& str);
+void serveCharArray(serve& s, const char* res, size_t len);
+void serveFile(Response &response, std::string &path, serve& s);
+void serveLua(Response &response, Request &request, std::string &path, serve& s);
 
 #endif //WEBSERVER_SERVLET_H

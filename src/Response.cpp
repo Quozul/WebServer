@@ -77,6 +77,20 @@ void Response::setBody(const std::string &b) {
     this->body = b;
 }
 
+std::string Response::getHeadersAsString() {
+    std::string response;
+
+    response += "HTTP/" + http_version + " " + std::to_string(response_code) + " " + codes.at(response_code) + "\n";
+
+    std::map<std::string, std::string>::iterator it, end;
+    for (it = headers.begin(), end = headers.end(); it != end; ++it)
+        response += it->first + ": " + it->second + "\n";
+
+    response += "\n";
+
+    return response;
+}
+
 std::string Response::toString() {
     std::string response;
 

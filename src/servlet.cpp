@@ -1,92 +1,127 @@
 #include "servlet.h"
 
-void servelet(serve& s) {
+void servelet(serve &s) {
     // Read request
     int read, pending;
-    unsigned long received = 0;
-    std::string requestString;
+    size_t received = 0;
+    char *readBytes = static_cast<char *>(malloc(1));
     char *buffer = new char[READ_SIZE];
     do {
         read = SSL_read(s.ssl, buffer, READ_SIZE);
         pending = SSL_pending(s.ssl);
 
         if (read > 0) {
+            readBytes = static_cast<char *>(std::realloc(readBytes, received + read + 1));
+            std::memcpy(readBytes + received, buffer, read);
             received += read;
-            std::string str(buffer);
-            requestString += str.substr(0, read);
         }
 
         if (pending == 0) break;
     } while (true);
     delete[] buffer;
 
+    *(readBytes + received) = '\0';
+
+    std::string requestString(readBytes);
     // Parse request
     Request request(requestString);
+    std::free(readBytes);
     Response response;
 
     std::string reqPath = request.getPath();
-
     std::string path = std::filesystem::path(s.config.at("server"));
     path += reqPath;
 
     // If file exists
     if (std::filesystem::exists(path)) {
         if (std::filesystem::is_regular_file(path)) {
-            serveFile(response, path);
-        } else if (std::filesystem::is_directory(path)) {
-            std::string filename = "index.lua";
-            if (std::filesystem::exists(path + filename)) {
-                path += filename;
-                // If lua file exists
-                serveLua(response, request, path, s);
-            } else {
-                filename = "index.html";
-                if (std::filesystem::exists(path + filename)) {
-                    // Serve index/html
-                    path += filename;
-                    serveFile(response, path);
-                } else {
-                    response.setResponseCode(404);
-                }
-            }
+            serveFile(response, path, s);
+            return;
         }
-    } else {
-        // If lua file exists
-        path += ".lua";
-        if (std::filesystem::exists(path)) {
-            serveLua(response, request, path, s);
-        } else {
-            response.setResponseCode(404);
+
+        if (std::filesystem::is_directory(path)) {
+            if (!path.ends_with('/')) path += '/';
+            path += "index";
         }
     }
 
-    // Convert to char* then send response
+    // If lua file exists
+    std::string filename = ".lua";
+    if (std::filesystem::exists(path + filename)) {
+        // If lua file exists
+        path += filename;
+        serveLua(response, request, path, s);
+        return;
+    }
+
+    filename = ".html";
+    if (std::filesystem::exists(path + filename)) {
+        // Serve file
+        path += filename;
+        serveFile(response, path, s);
+        return;
+    }
+
+    response.setResponseCode(404);
+
     std::string str = response.toString();
+    serveString(s, str);
+}
+
+void serveString(serve &s, std::string &str) {
+    // Convert to char* then send response
     size_t len = str.length();
+    char *buf = new char[READ_SIZE];
+    const char *res = str.c_str();
 
     for (size_t i = 0; i < len; i += READ_SIZE) {
         size_t end = std::min(i + READ_SIZE, len);
-        int l = static_cast<int>(end - i);
-        std::string chunk = str.substr(i, l);
-        SSL_write(s.ssl, chunk.c_str(), l);
+        size_t l = end - i;
+        std::memcpy(buf, res + i, l);
+        SSL_write(s.ssl, buf, l);
+    }
+}
+
+void serveCharArray(serve &s, const char *res, size_t len) {
+    char *buf = new char[READ_SIZE];
+
+    for (size_t i = 0; i < len; i += READ_SIZE) {
+        size_t end = std::min(i + READ_SIZE, len);
+        size_t l = end - i;
+        std::memcpy(buf, res + i, l);
+        SSL_write(s.ssl, buf, l);
+    }
+}
+
+void serveFile(Response &response, std::string &path, serve &s) {
+    // Loop in the file while sending chunks of it
+    std::streampos begin, end, cur, len;
+    std::ifstream file(path, std::ios::binary);
+    begin = file.tellg();
+    file.seekg(0, std::ios::end);
+    end = file.tellg();
+
+    response.setHeader("Content-Length", std::to_string(end - begin));
+
+    // Sends the headers
+    std::string headerString = response.getHeadersAsString();
+    serveString(s, headerString);
+
+    char *buf = new char[READ_SIZE];
+    if (file.is_open()) {
+        do {
+            len = std::min(static_cast<long>(READ_SIZE), end - cur);
+            file.seekg(cur);
+            file.read(buf, len);
+            SSL_write(s.ssl, buf, len);
+        } while ((cur += READ_SIZE) < end);
+        file.close();
     }
 
-    // Close connection
-    SSL_shutdown(s.ssl);
-    SSL_free(s.ssl);
-    close(s.client);
+    delete[] buf;
 }
 
-void serveFile(Response &response, std::string &path) {
-    // Open file as read only
-    std::ifstream file(path);
-    std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-    response.setHeader("Content-Length", std::to_string(contents.length()));
-    response.setBody(contents);
-}
-
-void serveLua(Response &response, Request &request, std::string &path, serve s) {
+void serveLua(Response &response, Request &request, std::string &path, serve &s) {
     response.setHeader("Content-Type", "text/html");
 
     int error = luaL_dofile(s.L, path.c_str());
@@ -123,8 +158,15 @@ void serveLua(Response &response, Request &request, std::string &path, serve s) 
         size_t len;
         const char *res = lua_tolstring(s.L, -1, &len);
         lua_pop(s.L, 1);
+        lua_settop(s.L, 0);
 
         response.setHeader("Content-Length", std::to_string(len));
-        response.setBody(const_cast<char *>(res));
+
+        // Send headers
+        std::string headerString = response.getHeadersAsString();
+        serveString(s, headerString);
+
+        // Sends what lua script returned
+        serveCharArray(s, res, len);
     }
 }

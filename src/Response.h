@@ -18,6 +18,8 @@ public:
     void setHeader(const std::string& key, const std::string& value);
     void setBody(const std::string& b);
     void setResponseCode(const int& code);
+
+    std::string getHeadersAsString();
     std::string toString();
 };
 

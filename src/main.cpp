@@ -21,7 +21,7 @@ extern "C" {
 #include "servlet.h"
 #include "Queue.h"
 
-#define THREADS 8
+#define THREADS 1
 
 int create_socket(int port) {
     int s;
@@ -90,14 +90,19 @@ void configure_context(SSL_CTX *ctx, const char *cert, const char *key) {
     }
 }
 
-[[noreturn]] void consume(Queue<serve> &queue, unsigned int id) {
+[[noreturn]] void consume(Queue<serve> &queue) {
     while (true) {
-        auto item = queue.pop();
-        servelet(item);
+        auto s = queue.pop();
+        servelet(s);
+
+        // Close connection
+        SSL_shutdown(s.ssl);
+        SSL_free(s.ssl);
+        close(s.client);
     }
 }
 
-int main(int argc, char **argv) {
+int main() {
     // Read config file
     std::map<std::string, std::string> config;
     std::ifstream file("server.conf");
@@ -132,10 +137,9 @@ int main(int argc, char **argv) {
 
     // Start response threads
     Queue<serve> queue;
-    std::vector<std::thread> consumers;
     for (unsigned int i = 0; i < THREADS; ++i) {
-        std::thread consumer(std::bind(&consume, std::ref(queue), i));
-        consumers.push_back(std::move(consumer));
+        std::thread handler(std::bind(&consume, std::ref(queue)));
+        handler.detach();
     }
 
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
@@ -149,7 +153,7 @@ int main(int argc, char **argv) {
         int client = accept(sockfd, (struct sockaddr *) &addr, &len);
         if (client < 0) {
             perror("Unable to accept");
-            //exit(EXIT_FAILURE);
+            continue;
         }
 
         ssl = SSL_new(ctx);
@@ -157,10 +161,11 @@ int main(int argc, char **argv) {
 
         if (SSL_accept(ssl) <= 0) {
             ERR_print_errors_fp(stderr);
-        } else {
-            serve s(ssl, L, addr, client, config);
-            queue.push(s);
+            continue;
         }
+
+        serve s(ssl, L, addr, client, config);
+        queue.push(s);
     }
 
     close(sockfd);
