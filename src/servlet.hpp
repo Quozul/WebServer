@@ -38,13 +38,13 @@ extern "C" {
 #define READ_SIZE 1024
 
 typedef struct Connection {
-    Connection(SSL *s, lua_State *l, int c, std::map<std::string, std::string> *o) :
-            ssl(s), L(l), client(c), config(o) {};
+    Connection(SSL *s, lua_State *l, const int c, const std::string *p) :
+            ssl(s), L(l), client(c), path(p) {};
 
     SSL *ssl;
     lua_State *L;
-    int client;
-    std::map<std::string, std::string> *config;
+    const int client;
+    const std::string *path;
 } Connection;
 
 void servlet(Connection &s);

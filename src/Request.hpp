@@ -7,11 +7,6 @@
 
 #include "luaFunctions.hpp"
 
-#define CRLF "\r\n"
-#define CRLF_CRLF "\r\n\r\n"
-#define CRLF_LEN 2
-#define CRLF_CRLF_LEN 4
-
 class Request {
 private:
     std::string http_version;

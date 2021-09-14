@@ -9,7 +9,7 @@ void servlet(Connection &s) {
     response.setSSL(s.ssl);
 
     std::string reqPath = request.getPath();
-    std::string path = std::string(s.config->at("server"));
+    std::string path = *s.path;
     path += reqPath;
 
     // If file exists
@@ -74,6 +74,8 @@ std::string readString(const Connection &s) {
 
 void serveFile(Response &response, std::string &path, Connection &s) {
     // TODO: Store file in memory for quicker access
+    // TODO: Verify method is GET
+    // TODO: Add support for "Range" header to send partial files
 
     // Loop in the file while sending chunks of it
     std::streampos end, cur = 0, len;

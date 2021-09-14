@@ -14,10 +14,13 @@ extern "C" {
 #include <functional>
 #include <map>
 #include <csignal>
+#include <filesystem>
 
 #include "servlet.hpp"
 #include "Queue.hpp"
 #include "socket.hpp"
+
+#include "tao/json.hpp"
 
 [[noreturn]] void consume(Queue<Connection> &queue) {
     while (true) {
@@ -31,38 +34,51 @@ extern "C" {
     }
 }
 
+// TODO: Use CLI arguments to override configuration
 int main() {
-    // Read config file
-    std::map<std::string, std::string> config;
-    std::ifstream file("server.conf");
-    std::string line;
-    size_t sep;
-    while (std::getline(file, line)) {
-        sep = line.find('=');
-        if (sep != std::string::npos) {
-            config.insert({line.substr(0, sep), line.substr(sep + 1, line.length() - sep - 2)});
-        }
+    std::cout << "Reading configuration..." << std::endl;
+
+#ifdef _WIN32
+    std::string config_path = "C:\\Program Data\\quozuldotweb.json";
+#else
+    std::string config_path;
+    if (getuid()) {
+        std::cout << "Not running as root" << std::endl;
+        config_path = std::string(getenv("HOME")) + "/.quozuldotweb.json";
+    } else {
+        config_path = "/etc/quozuldotweb.json";
+    }
+#endif
+
+    if (!std::filesystem::exists(config_path)) {
+        std::cout << "Configuration file not found" << std::endl;
+        return EXIT_FAILURE;
     }
 
-    // Initialize socket server with SSL support
+    // Read config file
+    const tao::json::value config = tao::json::from_file(config_path);
+
+    const char *cert = config.at("cert").get_string().c_str();
+    const char *key = config.at("key").get_string().c_str();
+    const std::string server_path = config.at("server").get_string();
+    const unsigned int port = config.at("port").get_unsigned();
+    const unsigned int threads = config.at("threads").get_unsigned();
+
+    std::cout << "Starting OpenSSL..." << std::endl;
+    // Initialize socket server_path with SSL support
     init_openssl();
     SSL_CTX *ctx = create_context();
 
-    configure_context(ctx, config.at("cert").c_str(), config.at("key").c_str());
+    configure_context(ctx, cert, key);
 
     sockInit();
-    int port = std::stoi(config.at("port"));
     int sockfd = create_socket(port);
 
 #ifndef _WIN32
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
 #endif
 
-    // Remove unneeded keys from configuration
-    config.erase("port");
-    config.erase("cert");
-    config.erase("key");
-
+    std::cout << "Starting Lua..." << std::endl;
     // Initialize lua
     lua_State *L = luaL_newstate();
     luaL_openlibs(L);
@@ -88,22 +104,22 @@ int main() {
     lua_pushcfunction(L, getRequestParams);
     lua_setglobal(L, "getRequestParams");
 
+    std::cout << "Starting threads..." << std::endl;
     // Start response threads
     Queue<Connection> queue;
-    int threads = std::stoi(config.at("threads"));
     for (unsigned int i = 0; i < threads; ++i) {
         std::thread handler(std::bind(&consume, std::ref(queue)));
         handler.detach();
     }
-    config.erase("threads");
 
+    std::cout << "Server listening!" << std::endl;
     /* Handle connections */
     while (true) {
         struct sockaddr_in addr;
         uint len = sizeof(addr);
         SSL *ssl;
 
-        int client = accept(sockfd, (struct sockaddr *) &addr, &len);
+        const int client = accept(sockfd, (struct sockaddr *) &addr, &len);
         if (client < 0) {
             perror("Unable to accept");
             exit(EXIT_FAILURE);
@@ -119,13 +135,14 @@ int main() {
             SSL_free(ssl);
             sockClose(client);
         } else {
-            Connection s(ssl, L, client, &config);
-            servlet(s);
+            Connection s(ssl, L, client, &server_path);
+            queue.push(s);
 
+            // Single threaded request handling
+            /*servlet(s);
             SSL_shutdown(s.ssl);
             SSL_free(s.ssl);
-            sockClose(s.client);
-            //queue.push(s);
+            sockClose(s.client);*/
         }
     }
 
@@ -134,4 +151,5 @@ int main() {
     SSL_CTX_free(ctx);
     cleanup_openssl();
     lua_close(L);
+    return EXIT_SUCCESS;
 }

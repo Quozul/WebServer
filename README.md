@@ -1,6 +1,21 @@
-# WebServer
+# Quozul.Web
 
 Web server made in C++.
+
+## Compiling
+
+> This program is designed to compile x64 bit systems running Linux and Windows (using msvc_x64).  
+> For Windows you might need to download `lua-5.3.3_Win64_dll14_lib.zip` from [LuaBinaries](https://sourceforge.net/projects/luabinaries).
+
+1. Install dependencies
+```sh
+apt install build-essential liblua5.3-dev libssl-dev cmake
+```
+2. Install submodules
+```sh
+git submodule update --init --recursive
+```
+3. Run cmake
 
 ## Features
 - HTTP over SSL
@@ -10,19 +25,21 @@ Web server made in C++.
 ## Config file
 
 Default config file:
-> The config file does not support comments!
+> The configuration file might change in the future with new features being added.  
+> No default file is not automatically created if it does not exist.  
+> Some parameters might not be used currently.
 
-```sh
-cert=/path/to/cert/file
-key=/path/to/key/file
-server=/path/to/server/folder
-port=443  # Port on which the server is running
-
-# The following options are not yet implemented
-nolua=false  # Prevent the server from responding with the raw .lua file
-mimefile=/path/to/mime.types  # mime.types can be found here https://raw.githubusercontent.com/apache/httpd/trunk/docs/conf/mime.types
-memcache=1024  # Maximum amount of memory the server can use as a file cache, 0 for none
-threads=8  # Maximum amount of threads to use for request handling
+```json
+{
+  "cert": "/path/to/cert/file",
+  "key": "/path/to/key/file",
+  "server": "/path/to/server/folder",
+  "port": 8443, // Port on which the server is running
+  "threads": 8, // Maximum amount of threads to use for request handling
+  "mime_types": "/etc/mime.types", // mime.types can be found here https://raw.githubusercontent.com/apache/httpd/trunk/docs/conf/mime.types
+  "serve_lua": true, // Defines if raw .lua files can be served, can be a security issue
+  "partial_download": true // Defines if the server allow partial downloads by default
+}
 ```
 
 ## LUA example
@@ -48,7 +65,9 @@ function F(request, response)
 end
 ```
 
-### The F function
+### The LUA function
+
+> Upcoming versions will feature `<method>()` functions (such as `GET()`) that the server will use to respond the request's method.
 
 The F function can receive 2 tables as parameters: `request` and `response`.
 
@@ -114,4 +133,3 @@ table getRequestParams(Request *request);
 local params = getRequestParams(request.p);
 local var = params["var"];
 ```
-

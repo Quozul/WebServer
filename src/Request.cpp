@@ -1,5 +1,10 @@
 #include "Request.hpp"
 
+#define CRLF "\r\n"
+#define CRLF_CRLF "\r\n\r\n"
+#define CRLF_LEN 2
+#define CRLF_CRLF_LEN 4
+
 Request::Request(const std::string &request) {
     size_t header_block_end = request.find(CRLF_CRLF);
     size_t status_line_end = request.find(CRLF);
@@ -31,8 +36,8 @@ Request::Request(const std::string &request) {
                     this->path = token;
                 }
 
-                // TODO: Parse url encoded path
-                this->path = decodeURIComponent(this->path);
+                // Parse url encoded path
+                //this->path = decodeURIComponent(this->path);
 
                 // TODO: Prevent directory traversal attack
 
