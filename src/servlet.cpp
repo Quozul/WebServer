@@ -1,6 +1,6 @@
 #include "servlet.hpp"
 
-void servlet(serve &s) {
+void servlet(Connection &s) {
     std::string requestString = readString(s);
 
     // Parse request
@@ -45,10 +45,10 @@ void servlet(serve &s) {
     response.setResponseCode(404);
 
     std::string str = response.toString();
-    serveString(s, str);
+    serveString(s.ssl, str);
 }
 
-std::string readString(const serve &s) {
+std::string readString(const Connection &s) {
     // Read request
     int read, pending;
     size_t received = 0;
@@ -72,52 +72,19 @@ std::string readString(const serve &s) {
     return requestString;
 }
 
-// TODO: Remove either static or non-static duplicate of this function
-void serveString(const serve &s, const std::string &str) {
-    // Convert to char* then send response
-    size_t len = str.length();
-    char *buf = new char[READ_SIZE];
-    const char *res = str.c_str();
-
-    for (size_t i = 0; i < len; i += READ_SIZE) {
-        size_t end = std::min(i + READ_SIZE, len);
-        size_t l = end - i;
-        std::memcpy(buf, res + i, l);
-        SSL_write(s.ssl, buf, l);
-    }
-
-    delete[] buf;
-}
-
-// TODO: Remove either static or non-static duplicate of this function
-void serveCharArray(const serve &s, const char *res, size_t len) {
-    char *buf = new char[READ_SIZE];
-
-    for (size_t i = 0; i < len; i += READ_SIZE) {
-        size_t end = std::min(i + READ_SIZE, len);
-        size_t l = end - i;
-        std::memcpy(buf, res + i, l);
-        SSL_write(s.ssl, buf, l);
-    }
-
-    delete[] buf;
-}
-
-void serveFile(Response &response, std::string &path, serve &s) {
-    // TODO: Store file in memory for quick access
+void serveFile(Response &response, std::string &path, Connection &s) {
+    // TODO: Store file in memory for quicker access
 
     // Loop in the file while sending chunks of it
-    std::streampos begin, end, cur, len;
-    std::ifstream file(path, std::ios::binary);
-    begin = file.tellg();
-    file.seekg(0, std::ios::end);
+    std::streampos end, cur = 0, len;
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
     end = file.tellg();
 
-    response.setHeader("Content-Length", std::to_string(end - begin));
+    response.setHeader("Content-Length", std::to_string(end));
 
     // Sends the headers
     std::string headerString = response.getHeadersAsString();
-    serveString(s, headerString);
+    serveString(s.ssl, headerString);
 
     if (file.is_open()) {
         char *buf = new char[READ_SIZE];
@@ -134,7 +101,7 @@ void serveFile(Response &response, std::string &path, serve &s) {
     }
 }
 
-void serveLua(Response &response, Request &request, std::string &path, serve &s) {
+void serveLua(Response &response, Request &request, std::string &path, Connection &s) {
     int error = luaL_dofile(s.L, path.c_str());
 
     if (error) {
@@ -184,10 +151,10 @@ void serveLua(Response &response, Request &request, std::string &path, serve &s)
 
             // Send headers
             std::string headerString = response.getHeadersAsString();
-            serveString(s, headerString);
+            serveString(s.ssl, headerString);
         }
 
         // Sends what lua script returned
-        serveCharArray(s, res, len);
+        serveCharArray(s.ssl, res, len);
     }
 }

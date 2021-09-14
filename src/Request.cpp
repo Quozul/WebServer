@@ -31,6 +31,9 @@ Request::Request(const std::string &request) {
                     this->path = token;
                 }
 
+                // TODO: Parse url encoded path
+                this->path = decodeURIComponent(this->path);
+
                 // TODO: Prevent directory traversal attack
 
                 break;
@@ -68,10 +71,12 @@ void Request::parseParams() {
 
     // Parse parameters
     while ((pos = raw_params.find('&'))) {
-        token = raw_params.substr(0, pos);
+        token = decodeURIComponent(raw_params.substr(0, pos));
         sep = token.find('=');
         if (sep != std::string::npos) {
             this->params.insert({token.substr(0, sep), token.substr(sep + 1)});
+        } else {
+            this->params.insert({token, ""});
         }
         raw_params.erase(0, pos + 1);
         if (pos == std::string::npos) break;

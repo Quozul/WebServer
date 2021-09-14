@@ -37,26 +37,22 @@ extern "C" {
 
 #define READ_SIZE 1024
 
-typedef struct serve {
-    serve(SSL *s, lua_State *l, int c, std::map<std::string, std::string> *o) :
+typedef struct Connection {
+    Connection(SSL *s, lua_State *l, int c, std::map<std::string, std::string> *o) :
             ssl(s), L(l), client(c), config(o) {};
 
     SSL *ssl;
     lua_State *L;
     int client;
     std::map<std::string, std::string> *config;
-} serve;
+} Connection;
 
-void servlet(serve &s);
+void servlet(Connection &s);
 
-std::string readString(const serve &s);
+std::string readString(const Connection &s);
 
-void serveString(const serve &s, const std::string &str);
+void serveFile(Response &response, std::string &path, Connection &s);
 
-void serveCharArray(const serve &s, const char *res, size_t len);
-
-void serveFile(Response &response, std::string &path, serve &s);
-
-void serveLua(Response &response, Request &request, std::string &path, serve &s);
+void serveLua(Response &response, Request &request, std::string &path, Connection &s);
 
 #endif //WEBSERVER_SERVLET_HPP

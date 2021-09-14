@@ -5,6 +5,8 @@
 #include <map>
 #include <iostream>
 
+#include "luaFunctions.hpp"
+
 #define CRLF "\r\n"
 #define CRLF_CRLF "\r\n\r\n"
 #define CRLF_LEN 2
