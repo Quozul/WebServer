@@ -15,6 +15,9 @@ extern "C" {
 #include <map>
 #include <csignal>
 #include <filesystem>
+#include <sstream>
+#include <string>
+#include <regex>
 
 #include "servlet.hpp"
 #include "Queue.hpp"
@@ -24,7 +27,7 @@ extern "C" {
 
 [[noreturn]] void consume(Queue<Connection> &queue) {
     while (true) {
-        auto s = queue.pop();
+        Connection s = queue.pop();
         servlet(s);
 
         // Close connection
@@ -36,8 +39,6 @@ extern "C" {
 
 // TODO: Use CLI arguments to override configuration
 int main() {
-    std::cout << "Reading configuration..." << std::endl;
-
 #ifdef _WIN32
     std::string config_path = "C:\\Program Data\\quozuldotweb.json";
 #else
@@ -63,16 +64,36 @@ int main() {
     const std::string server_path = config.at("server").get_string();
     const unsigned int port = config.at("port").get_unsigned();
     const unsigned int threads = config.at("threads").get_unsigned();
+    const std::string mime_types_path = config.at("mime_types").get_string();
 
-    std::cout << "Starting OpenSSL..." << std::endl;
+    // Load mime.types
+    std::map<std::string, std::string> mime_types;
+    std::ifstream infile(mime_types_path);
+
+    std::regex rgx("\\t+");
+
+    std::string line;
+    while (std::getline(infile, line)) {
+        std::istringstream iss(line);
+
+        if (line.starts_with('#') || line.length() == 0) continue;
+
+        std::vector<std::string> elems = split(line, '\t');
+        if (elems.size() != 2) continue;
+
+        mime_types.insert({elems[1], elems[0]});
+    }
+
     // Initialize socket server_path with SSL support
     init_openssl();
     SSL_CTX *ctx = create_context();
 
     configure_context(ctx, cert, key);
 
-    sockInit();
     int sockfd = create_socket(port);
+
+    bool t = true;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &t, sizeof(int));
 
 #ifndef _WIN32
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
@@ -104,7 +125,6 @@ int main() {
     lua_pushcfunction(L, getRequestParams);
     lua_setglobal(L, "getRequestParams");
 
-    std::cout << "Starting threads..." << std::endl;
     // Start response threads
     Queue<Connection> queue;
     for (unsigned int i = 0; i < threads; ++i) {
@@ -135,7 +155,7 @@ int main() {
             SSL_free(ssl);
             sockClose(client);
         } else {
-            Connection s(ssl, L, client, &server_path);
+            Connection s(ssl, L, client, &server_path, mime_types);
             queue.push(s);
 
             // Single threaded request handling
@@ -147,9 +167,11 @@ int main() {
     }
 
     sockClose(sockfd);
-    sockQuit();
+#ifdef _WIN32
+    return WSACleanup();
+#endif
     SSL_CTX_free(ctx);
     cleanup_openssl();
-    lua_close(L);
+    //lua_close(L);
     return EXIT_SUCCESS;
 }

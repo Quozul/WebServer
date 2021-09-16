@@ -99,3 +99,13 @@ std::string Response::toString() {
 void Response::setResponseCode(const int &code) {
     response_code = code;
 }
+
+void Response::sendHeaders() {
+    if (headers_sent) {
+        return; // Do not send headers again
+    }
+
+    std::string headerString = this->getHeadersAsString();
+    serveString(this->ssl, headerString);
+    headers_sent = true;
+}

@@ -1,13 +1,6 @@
 #ifndef WEBSERVER_LUAFUNCTIONS_HPP
 #define WEBSERVER_LUAFUNCTIONS_HPP
 
-#define NOMINMAX
-
-extern "C" {
-#include <lauxlib.h>
-#include <lualib.h>
-}
-
 #include <lua.hpp>
 #include <iostream>
 #include <cstring>
@@ -16,12 +9,7 @@ extern "C" {
 
 #include "Request.hpp"
 #include "Response.hpp"
-
-#define READ_SIZE 1024
-
-void serveCharArray(SSL *ssl, const char *res, size_t len);
-
-void serveString(SSL *ssl, std::string &str);
+#include "utils.hpp"
 
 int setResponseHeader(lua_State *L);
 

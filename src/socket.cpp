@@ -14,23 +14,6 @@ int sockClose(SOCKET sock) {
     return status;
 }
 
-int sockInit() {
-#ifdef _WIN32
-    WSADATA wsa_data;
-    return WSAStartup(MAKEWORD(1, 1), &wsa_data);
-#else
-    return 0;
-#endif
-}
-
-int sockQuit() {
-#ifdef _WIN32
-    return WSACleanup();
-#else
-    return 0;
-#endif
-}
-
 int create_socket(int port) {
     int s;
     struct sockaddr_in addr;

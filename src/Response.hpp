@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <openssl/ssl.h>
+#include "utils.hpp"
 
 class Response {
 private:
@@ -31,6 +32,8 @@ public:
     void setResponseCode(const int &code);
 
     std::string getHeadersAsString();
+
+    void sendHeaders();
 
     /**
      * Should only be used if the response has a body

@@ -48,7 +48,7 @@ The server can read and run .lua files for server-side scripting, here's an exam
 
 ```lua
 -- Function called by the server
-function F(request, response)
+function GET(request, response)
     -- Set a custom header
     setResponseHeader(response, "Content-Type", "application/json");
     
@@ -65,11 +65,10 @@ function F(request, response)
 end
 ```
 
-### The LUA function
+### The LUA functions
 
-> Upcoming versions will feature `<method>()` functions (such as `GET()`) that the server will use to respond the request's method.
-
-The F function can receive 2 tables as parameters: `request` and `response`.
+Call your function as the method name you want your endpoint to respond (ie. `function GET()` or `function POST()`).  
+Your function can receive 2 parameters: `request` and `response`.
 
 Request contains the following values:
 - `method` - Request's method
@@ -78,7 +77,7 @@ Request contains the following values:
 - `body` - Content of the request
 - `p` - Pointer to the Request instance
 
-Response is only a pointer to the Response instance.
+Response is only a pointer to the Response instance used by the functions bellow.
 
 ### Response functions
 

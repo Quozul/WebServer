@@ -78,15 +78,20 @@ void serveFile(Response &response, std::string &path, Connection &s) {
     // TODO: Add support for "Range" header to send partial files
 
     // Loop in the file while sending chunks of it
-    std::streampos end, cur = 0, len;
+    std::streampos end, cur = 0;
+    long len;
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     end = file.tellg();
 
+    const std::string ext = path.substr(path.find_last_of('.') + 1);
+    const std::string mime = s.mime_types.at(ext);
+
     response.setHeader("Content-Length", std::to_string(end));
+    response.setHeader("Content-Type", mime);
+
 
     // Sends the headers
-    std::string headerString = response.getHeadersAsString();
-    serveString(s.ssl, headerString);
+    response.sendHeaders();
 
     if (file.is_open()) {
         char *buf = new char[READ_SIZE];
@@ -109,7 +114,14 @@ void serveLua(Response &response, Request &request, std::string &path, Connectio
     if (error) {
         response.setResponseCode(500);
     } else {
-        lua_getglobal(s.L, "F");
+        std::string method = request.getMethod();
+        for (auto & c: method) c = static_cast<char>(std::toupper(static_cast<int>(c)));
+        int type = lua_getglobal(s.L, method.c_str());
+        if (type != LUA_TFUNCTION) {
+            response.setResponseCode(404);
+            response.sendHeaders();
+            return;
+        }
 
         // Create the request table
         lua_newtable(s.L);
@@ -150,10 +162,7 @@ void serveLua(Response &response, Request &request, std::string &path, Connectio
 
         if (!response.headers_sent) {
             response.setHeader("Content-Length", std::to_string(len));
-
-            // Send headers
-            std::string headerString = response.getHeadersAsString();
-            serveString(s.ssl, headerString);
+            response.sendHeaders();
         }
 
         // Sends what lua script returned

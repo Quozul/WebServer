@@ -34,17 +34,19 @@ extern "C" {
 #include "Response.hpp"
 #include "Request.hpp"
 #include "luaFunctions.hpp"
+#include "utils.hpp"
 
 #define READ_SIZE 1024
 
 typedef struct Connection {
-    Connection(SSL *s, lua_State *l, const int c, const std::string *p) :
-            ssl(s), L(l), client(c), path(p) {};
+    Connection(SSL *s, lua_State *l, const int c, const std::string *p, const std::map<std::string, std::string> &m) :
+            ssl(s), L(l), client(c), path(p), mime_types(m) {};
 
     SSL *ssl;
     lua_State *L;
     const int client;
     const std::string *path;
+    const std::map<std::string, std::string> &mime_types;
 } Connection;
 
 void servlet(Connection &s);

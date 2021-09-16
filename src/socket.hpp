@@ -36,10 +36,6 @@ typedef int SOCKET;
 
 int sockClose(SOCKET sock);
 
-int sockInit();
-
-int sockQuit();
-
 int create_socket(int port);
 
 void init_openssl();
