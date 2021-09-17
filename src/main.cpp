@@ -52,7 +52,8 @@ int main() {
 #endif
 
     if (!std::filesystem::exists(config_path)) {
-        std::cout << "Configuration file not found" << std::endl;
+        std::cout << "Configuration file not found\nLooked at: ";
+        std::cout << config_path << std::endl;
         return EXIT_FAILURE;
     }
 
@@ -79,23 +80,29 @@ int main() {
         if (line.starts_with('#') || line.length() == 0) continue;
 
         std::vector<std::string> elems = split(line, '\t');
-        if (elems.size() != 2) continue;
-
-        mime_types.insert({elems[1], elems[0]});
+        if (elems.size() < 2) continue;
+        std::vector<std::string> extensions = split(elems[1], ' ');
+        for (const std::string &ext: extensions) {
+            mime_types.insert({ext, elems[0]});
+        }
     }
 
     // Initialize socket server_path with SSL support
     init_openssl();
     SSL_CTX *ctx = create_context();
 
+    SSL_CTX_set_options(ctx, SSL_OP_NO_COMPRESSION);
+    SSL_CTX_set_mode(ctx, SSL_MODE_RELEASE_BUFFERS);
+    SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+
     configure_context(ctx, cert, key);
 
     int sockfd = create_socket(port);
 
+#ifndef _WIN32
     bool t = true;
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &t, sizeof(int));
 
-#ifndef _WIN32
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
 #endif
 

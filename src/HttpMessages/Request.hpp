@@ -4,8 +4,7 @@
 #include <string>
 #include <map>
 #include <iostream>
-
-#include "luaFunctions.hpp"
+#include "../utils.hpp"
 
 class Request {
 private:

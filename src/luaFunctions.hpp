@@ -4,11 +4,10 @@
 #include <lua.hpp>
 #include <iostream>
 #include <cstring>
-#include <regex>
 #include <sstream>
 
-#include "Request.hpp"
-#include "Response.hpp"
+#include "HttpMessages/Request.hpp"
+#include "HttpMessages/Response.hpp"
 #include "utils.hpp"
 
 int setResponseHeader(lua_State *L);
@@ -32,10 +31,5 @@ int getRequestHeaders(lua_State *L);
  * @return
  */
 int getRequestParams(lua_State *L);
-
-// Source: https://gist.github.com/arthurafarias/56fec2cd49a32f374c02d1df2b6c350f
-std::string decodeURIComponent(std::string encoded);
-
-std::string encodeURIComponent(std::string decoded);
 
 #endif //WEBSERVER_LUAFUNCTIONS_HPP

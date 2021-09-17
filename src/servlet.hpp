@@ -31,8 +31,8 @@ extern "C" {
 #include <map>
 #include <filesystem>
 
-#include "Response.hpp"
-#include "Request.hpp"
+#include "HttpMessages/Response.hpp"
+#include "HttpMessages/Request.hpp"
 #include "luaFunctions.hpp"
 #include "utils.hpp"
 

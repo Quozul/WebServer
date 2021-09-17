@@ -82,13 +82,14 @@ void serveFile(Response &response, std::string &path, Connection &s) {
     long len;
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     end = file.tellg();
+    response.setHeader("Content-Length", std::to_string(end));
 
     const std::string ext = path.substr(path.find_last_of('.') + 1);
-    const std::string mime = s.mime_types.at(ext);
 
-    response.setHeader("Content-Length", std::to_string(end));
-    response.setHeader("Content-Type", mime);
-
+    try {
+        const std::string mime = s.mime_types.at(ext);
+        response.setHeader("Content-Type", mime);
+    } catch (std::out_of_range&) {}
 
     // Sends the headers
     response.sendHeaders();

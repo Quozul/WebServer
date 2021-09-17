@@ -22,4 +22,9 @@ void serveCharArray(SSL *ssl, const char *res, size_t len);
 
 void serveString(SSL *ssl, std::string &str);
 
+// Source: https://gist.github.com/arthurafarias/56fec2cd49a32f374c02d1df2b6c350f
+std::string decodeURIComponent(std::string encoded);
+
+std::string encodeURIComponent(std::string decoded);
+
 #endif //WEBSERVER_UTILS_HPP

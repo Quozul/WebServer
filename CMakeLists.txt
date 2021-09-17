@@ -15,8 +15,8 @@ include_directories(${PROJECT_SOURCE_DIR}/thirdparty/json/include)
 include_directories(${PROJECT_SOURCE_DIR}/thirdparty/json/external/PEGTL/include)
 add_subdirectory("thirdparty/json")
 
-file(GLOB_RECURSE CONFIGURE_DEPENDS "src/*.h" "src/*.hpp" "src/*.cpp")
-add_executable(${PROJECT_NAME} ${CONFIGURE_DEPENDS})
+file(GLOB_RECURSE CONFIGURE_DEPENDS "src/*.cpp")
+add_executable(${PROJECT_NAME} ${CONFIGURE_DEPENDS} "src/utils.cpp")
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
