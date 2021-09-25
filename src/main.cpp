@@ -40,7 +40,7 @@ extern "C" {
 // TODO: Use CLI arguments to override configuration
 int main() {
 #ifdef _WIN32
-    std::string config_path = "C:\\Program Data\\quozuldotweb.json";
+    std::string config_path = "C:\\ProgramData\\quozuldotweb.json";
 #else
     std::string config_path;
     if (getuid()) {
@@ -86,6 +86,14 @@ int main() {
             mime_types.insert({ext, elems[0]});
         }
     }
+
+#ifdef _WIN32
+    WSADATA wsa_data;
+    WSAStartup(MAKEWORD(1, 1), &wsa_data);
+#endif
+
+    // Prepare cache
+    CacheMap cache;
 
     // Initialize socket server_path with SSL support
     init_openssl();
@@ -162,7 +170,7 @@ int main() {
             SSL_free(ssl);
             sockClose(client);
         } else {
-            Connection s(ssl, L, client, &server_path, mime_types);
+            Connection s(ssl, L, client, &server_path, mime_types, cache);
             queue.push(s);
 
             // Single threaded request handling
@@ -173,12 +181,18 @@ int main() {
         }
     }
 
+    std::cout << "Closing server." << std::flush;
     sockClose(sockfd);
 #ifdef _WIN32
-    return WSACleanup();
+    WSACleanup();
 #endif
+    std::cout << "." << std::flush;
     SSL_CTX_free(ctx);
+    std::cout << "." << std::flush;
     cleanup_openssl();
-    //lua_close(L);
+    std::cout << "." << std::flush;
+    lua_close(L);
+    std::cout << "." << std::flush;
+    exit(EXIT_SUCCESS);
     return EXIT_SUCCESS;
 }

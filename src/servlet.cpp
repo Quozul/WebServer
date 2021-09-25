@@ -72,18 +72,8 @@ std::string readString(const Connection &s) {
     return requestString;
 }
 
-void serveFile(Response &response, std::string &path, Connection &s) {
-    // TODO: Store file in memory for quicker access
-    // TODO: Verify method is GET
-    // TODO: Add support for "Range" header to send partial files
-
-    // Loop in the file while sending chunks of it
-    std::streampos end, cur = 0;
-    long len;
-    std::ifstream file(path, std::ios::binary | std::ios::ate);
-    end = file.tellg();
-    response.setHeader("Content-Length", std::to_string(end));
-
+void serveFile(Response &response, const std::string &path, Connection &s) {
+    // Set mime type
     const std::string ext = path.substr(path.find_last_of('.') + 1);
 
     try {
@@ -91,8 +81,40 @@ void serveFile(Response &response, std::string &path, Connection &s) {
         response.setHeader("Content-Type", mime);
     } catch (std::out_of_range&) {}
 
+    // Loop in the file while sending chunks of it
+    std::streampos cur = 0;
+    long len;
+
+    // If file is already in cache, send it
+    if (s.cache.contains(path)) {
+        Cache *cache = s.cache.at(path);
+
+        response.setHeader("Content-Length", std::to_string(cache->size));
+        // Sends the headers
+        response.sendHeaders();
+
+        do {
+            len = std::min(static_cast<long>(READ_SIZE), static_cast<long>(cache->size - cur));
+            SSL_write(s.ssl, cache->data + cur, len);
+        } while ((cur += READ_SIZE) < cache->size);
+
+        return;
+    }
+
+    // TODO: Verify method is GET
+    // TODO: Add support for "Range" header to send partial files
+
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    std::streampos end = file.tellg();
+
+    response.setHeader("Content-Length", std::to_string(end));
     // Sends the headers
     response.sendHeaders();
+
+    // Create cache entry
+    char *data = new char[end];
+    Cache *cache = new Cache(path, data, end);
+    s.cache.insert(CachePair(path, cache));
 
     if (file.is_open()) {
         char *buf = new char[READ_SIZE];
@@ -101,6 +123,7 @@ void serveFile(Response &response, std::string &path, Connection &s) {
             len = std::min(static_cast<long>(READ_SIZE), static_cast<long>(end - cur));
             file.seekg(cur);
             file.read(buf, len);
+            memcpy(data + cur, buf, len); // Copy buffer to cache
             SSL_write(s.ssl, buf, len);
         } while ((cur += READ_SIZE) < end);
 
