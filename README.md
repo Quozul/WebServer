@@ -8,9 +8,14 @@ Web server made in C++.
 > For Windows you might need to download `lua-5.3.3_Win64_dll14_lib.zip` from [LuaBinaries](https://sourceforge.net/projects/luabinaries).
 
 1. Install dependencies
-```sh
-apt install build-essential liblua5.3-dev libssl-dev cmake
-```
+   1. Ubuntu
+    ```sh
+    apt install build-essential liblua5.3-dev libssl-dev cmake
+    ```
+   2. Fedora
+   ```shell
+    dnf install lua-devel cmake
+    ```
 2. Install submodules
 ```sh
 git submodule update --init --recursive
@@ -38,9 +43,17 @@ Default config file:
   "threads": 8, // Maximum amount of threads to use for request handling
   "mime_types": "/etc/mime.types", // mime.types can be found here https://raw.githubusercontent.com/apache/httpd/trunk/docs/conf/mime.types
   "serve_lua": true, // Defines if raw .lua files can be served, can be a security issue
-  "partial_download": true // Defines if the server allow partial downloads by default
+  "partial_download": true, // Defines if the server allow partial downloads by default
+   "use_cache": true // Does the server uses strong cache methods
 }
 ```
+
+## Libraries
+| Name                                          | Description                  |
+|-----------------------------------------------|------------------------------|
+| [taocpp/json](https://github.com/taocpp/json) | C++ header-only JSON library |
+| [Lua C API](https://www.lua.org/pil/24.html)  | Scripting embedded language  |
+| [OpenSSL](https://www.openssl.org/)           | Secure communication toolkit |
 
 ## LUA example
 

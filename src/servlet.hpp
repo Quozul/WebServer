@@ -43,7 +43,6 @@ extern "C" {
 #include "HttpMessages/Request.hpp"
 #include "luaFunctions.hpp"
 #include "utils.hpp"
-
 #define READ_SIZE 1024
 
 typedef struct Cache {
@@ -67,16 +66,16 @@ typedef std::map<std::string, Cache *> CacheMap;
 typedef std::pair<std::string, Cache *> CachePair;
 
 typedef struct Connection {
-    Connection(SSL *s, lua_State *l, const int c, const std::string *p,
-               const std::map<std::string, std::string> &m, CacheMap &a) :
-            ssl(s), L(l), client(c), path(p), mime_types(m), cache(a) {};
+    Connection(SSL *s, const int c, const std::string *p,
+               const std::map<std::string, std::string> &m, CacheMap &a, const bool u) :
+            ssl(s), client(c), path(p), mime_types(m), cache(a), use_cache(u) {};
 
     SSL *ssl;
-    lua_State *L;
     const int client;
     const std::string *path;
     const std::map<std::string, std::string> &mime_types;
     CacheMap &cache;
+    const bool use_cache;
 } Connection;
 
 void servlet(Connection &s);

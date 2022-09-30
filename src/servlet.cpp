@@ -86,7 +86,7 @@ void serveFile(Response &response, const std::string &path, Connection &s) {
     long len;
 
     // If file is already in cache, send it
-    if (s.cache.contains(path)) {
+    if (s.use_cache && s.cache.contains(path)) {
         Cache *cache = s.cache.at(path);
 
         response.setHeader("Content-Length", std::to_string(cache->size));
@@ -113,8 +113,11 @@ void serveFile(Response &response, const std::string &path, Connection &s) {
 
     // Create cache entry
     char *data = new char[end];
-    Cache *cache = new Cache(path, data, end);
-    s.cache.insert(CachePair(path, cache));
+
+    if (s.use_cache) {
+        Cache *cache = new Cache(path, data, end);
+        s.cache.insert(CachePair(path, cache));
+    }
 
     if (file.is_open()) {
         char *buf = new char[READ_SIZE];
@@ -133,14 +136,15 @@ void serveFile(Response &response, const std::string &path, Connection &s) {
 }
 
 void serveLua(Response &response, Request &request, std::string &path, Connection &s) {
-    int error = luaL_dofile(s.L, path.c_str());
+    auto* L = initializeLua();
+    int error = luaL_dofile(L, path.c_str());
 
     if (error) {
         response.setResponseCode(500);
     } else {
         std::string method = request.getMethod();
         for (auto & c: method) c = static_cast<char>(std::toupper(static_cast<int>(c)));
-        int type = lua_getglobal(s.L, method.c_str());
+        int type = lua_getglobal(L, method.c_str());
         if (type != LUA_TFUNCTION) {
             response.setResponseCode(404);
             response.sendHeaders();
@@ -148,41 +152,41 @@ void serveLua(Response &response, Request &request, std::string &path, Connectio
         }
 
         // Create the request table
-        lua_newtable(s.L);
-        int requestLuaTable = lua_gettop(s.L);
+        lua_newtable(L);
+        int requestLuaTable = lua_gettop(L);
 
-        lua_pushstring(s.L, request.getVersion().c_str());
-        lua_setfield(s.L, requestLuaTable, "http_version");
+        lua_pushstring(L, request.getVersion().c_str());
+        lua_setfield(L, requestLuaTable, "http_version");
 
-        lua_pushstring(s.L, request.getMethod().c_str());
-        lua_setfield(s.L, requestLuaTable, "method");
+        lua_pushstring(L, request.getMethod().c_str());
+        lua_setfield(L, requestLuaTable, "method");
 
-        lua_pushstring(s.L, request.getPath().c_str());
-        lua_setfield(s.L, requestLuaTable, "path");
+        lua_pushstring(L, request.getPath().c_str());
+        lua_setfield(L, requestLuaTable, "path");
 
-        lua_pushstring(s.L, request.getBody().c_str());
-        lua_setfield(s.L, requestLuaTable, "body");
+        lua_pushstring(L, request.getBody().c_str());
+        lua_setfield(L, requestLuaTable, "body");
 
         // Pointer to the request, used for c functions bellow
-        lua_pushlightuserdata(s.L, &request);
-        lua_setfield(s.L, requestLuaTable, "p");
+        lua_pushlightuserdata(L, &request);
+        lua_setfield(L, requestLuaTable, "p");
 
-        lua_pushlightuserdata(s.L, &response);
+        lua_pushlightuserdata(L, &response);
 
         // Call the function
-        if (lua_pcall(s.L, /* Function argument count */ 2, /* Function return count */ 1, 0) != 0) {
+        if (lua_pcall(L, /* Function argument count */ 2, /* Function return count */ 1, 0) != 0) {
             response.setResponseCode(500);
         }
 
         // Read the result of the function
-        if (!lua_isstring(s.L, -1)) {
+        if (!lua_isstring(L, -1)) {
             response.setResponseCode(500);
         }
         size_t len;
-        const char *res = lua_tolstring(s.L, -1, &len);
-        lua_pop(s.L, 1);
+        const char *res = lua_tolstring(L, -1, &len);
+        lua_pop(L, 1);
 
-        lua_settop(s.L, 0); // Clear lua stack
+        lua_settop(L, 0); // Clear lua stack
 
         if (!response.headers_sent) {
             response.setHeader("Content-Length", std::to_string(len));
@@ -192,4 +196,6 @@ void serveLua(Response &response, Request &request, std::string &path, Connectio
         // Sends what lua script returned
         serveCharArray(s.ssl, res, len);
     }
+
+    lua_close(L);
 }

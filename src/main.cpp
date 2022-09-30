@@ -66,6 +66,7 @@ int main() {
     const unsigned int port = config.at("port").get_unsigned();
     const unsigned int threads = config.at("threads").get_unsigned();
     const std::string mime_types_path = config.at("mime_types").get_string();
+    const bool use_cache = config.at("use_cache").get_boolean();
 
     // Load mime.types
     std::map<std::string, std::string> mime_types;
@@ -114,32 +115,6 @@ int main() {
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
 #endif
 
-    std::cout << "Starting Lua..." << std::endl;
-    // Initialize lua
-    lua_State *L = luaL_newstate();
-    luaL_openlibs(L);
-    luaopen_base(L);
-    luaopen_table(L);
-    luaopen_io(L);
-    luaopen_string(L);
-    luaopen_math(L);
-
-    // Set global LUA functions
-    lua_pushcfunction(L, setResponseHeader);
-    lua_setglobal(L, "setResponseHeader");
-
-    lua_pushcfunction(L, sendResponseBody);
-    lua_setglobal(L, "sendResponseBody");
-
-    lua_pushcfunction(L, sendResponseHeaders);
-    lua_setglobal(L, "sendResponseHeaders");
-
-    lua_pushcfunction(L, getRequestHeaders);
-    lua_setglobal(L, "getRequestHeaders");
-
-    lua_pushcfunction(L, getRequestParams);
-    lua_setglobal(L, "getRequestParams");
-
     // Start response threads
     Queue<Connection> queue;
     for (unsigned int i = 0; i < threads; ++i) {
@@ -170,7 +145,7 @@ int main() {
             SSL_free(ssl);
             sockClose(client);
         } else {
-            Connection s(ssl, L, client, &server_path, mime_types, cache);
+            Connection s(ssl, client, &server_path, mime_types, cache, use_cache);
             queue.push(s);
 
             // Single threaded request handling
@@ -190,8 +165,6 @@ int main() {
     SSL_CTX_free(ctx);
     std::cout << "." << std::flush;
     cleanup_openssl();
-    std::cout << "." << std::flush;
-    lua_close(L);
     std::cout << "." << std::flush;
     exit(EXIT_SUCCESS);
     return EXIT_SUCCESS;

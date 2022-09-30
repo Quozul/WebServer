@@ -8,11 +8,14 @@ extern "C" {
 
 #define READ_SIZE 1024
 
+#include <lua.hpp>
 #include <cstring>
 #include <string>
 #include <sstream>
 #include <vector>
 #include <iterator>
+
+#include "luaFunctions.hpp"
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems);
 
@@ -26,5 +29,7 @@ void serveString(SSL *ssl, std::string &str);
 std::string decodeURIComponent(std::string encoded);
 
 std::string encodeURIComponent(std::string decoded);
+
+lua_State *initializeLua();
 
 #endif //WEBSERVER_UTILS_HPP

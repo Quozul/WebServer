@@ -86,3 +86,32 @@ std::string decodeURIComponent(std::string encoded) {
     }
     return oss.str();
 }*/
+
+lua_State *initializeLua() {
+    // Initialize lua
+    lua_State *L = luaL_newstate();
+    luaL_openlibs(L);
+    luaopen_base(L);
+    luaopen_table(L);
+    luaopen_io(L);
+    luaopen_string(L);
+    luaopen_math(L);
+
+    // Set global LUA functions
+    lua_pushcfunction(L, setResponseHeader);
+    lua_setglobal(L, "setResponseHeader");
+
+    lua_pushcfunction(L, sendResponseBody);
+    lua_setglobal(L, "sendResponseBody");
+
+    lua_pushcfunction(L, sendResponseHeaders);
+    lua_setglobal(L, "sendResponseHeaders");
+
+    lua_pushcfunction(L, getRequestHeaders);
+    lua_setglobal(L, "getRequestHeaders");
+
+    lua_pushcfunction(L, getRequestParams);
+    lua_setglobal(L, "getRequestParams");
+
+    return L;
+}
