@@ -9,18 +9,21 @@ Web server made in C++.
 
 1. Install dependencies
    1. Ubuntu
-    ```sh
-    apt install build-essential liblua5.3-dev libssl-dev cmake
-    ```
+      ```sh
+      sudo apt install build-essential liblua5.3-dev libssl-dev cmake
+      ```
    2. Fedora
-   ```shell
-    dnf install lua-devel cmake
-    ```
+      ```shell
+      sudo dnf install lua-devel cmake
+      ```
 2. Install submodules
-```sh
-git submodule update --init --recursive
-```
-3. Run cmake
+   ```sh
+   git submodule update --init --recursive
+   ```
+3. Install using CMake
+   ```sh
+   sudo cmake --build . --target install
+   ```
 
 ## Features
 - HTTP over SSL
