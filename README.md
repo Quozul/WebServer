@@ -2,6 +2,13 @@
 
 Web server made in C++.
 
+## Run
+
+### Using Docker
+
+1. Run `docker compose up --build -d`
+2. Open https://localhost:8443/ and accept the self-signed certificate
+
 ## Compiling
 
 > This program is designed to compile x64 bit systems running Linux and Windows (using msvc_x64).  

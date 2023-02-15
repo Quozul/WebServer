@@ -1,0 +1,11 @@
+{
+  "cert": "/app/server.cert",
+  "key": "/app/server.key",
+  "server": "/var/www",
+  "port": 8443,
+  "threads": 8,
+  "mime_types": "/etc/mime.types",
+  "serve_lua": true,
+  "partial_download": true,
+  "use_cache": false
+}
