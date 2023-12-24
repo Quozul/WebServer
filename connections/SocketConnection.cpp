@@ -10,7 +10,6 @@ SocketConnection::SocketConnection(const int client) : Connection() {
 }
 
 std::string SocketConnection::socket_read() {
-    std::cout << "Reading!" << std::endl;
     std::string final_buffer;
 
     ssize_t bytes_read = 0, pending = 0;

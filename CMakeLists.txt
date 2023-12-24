@@ -9,4 +9,8 @@ add_executable(web_server_reboot main.cpp
         connections/Connection.cpp
         connections/Connection.h
         connections/SocketConnection.cpp
-        connections/SocketConnection.h)
+        connections/SocketConnection.h
+        responses/Response.cpp
+        responses/Response.h
+        responses/Request.cpp
+        responses/Request.h)

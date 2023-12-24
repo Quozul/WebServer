@@ -52,11 +52,25 @@ void App::run(const int port) {
 
 void App::accept_connection(Connection &connection) {
     const auto bytes = connection.socket_read();
-    connection.write_socket(bytes);
+    const auto request = Request::parse(bytes);
+
+    if (const auto path = request.get_path(); this->routes.contains(path)) {
+        const Response response = this->routes[path](request);
+        connection.write_socket(response.build());
+    } else {
+        auto response = Response();
+        response.set_status_code(404);
+        connection.write_socket(response.build());
+    }
+
     connection.close_socket();
 }
 
 void App::close_socket() const {
     std::cout << "Closing server." << std::flush;
     close(sockfd);
+}
+
+void App::route(const std::string &path, const std::function<Response (const Request &)> &callback) {
+    this->routes[path] = callback;
 }
