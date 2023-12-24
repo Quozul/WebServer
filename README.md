@@ -1,7 +1,7 @@
 # Web Server
 
 A web server written in C++ with SSL support.
-With an API inspired by the ExpressJS framework.
+With an API inspired by the Express.js framework.
 
 ## Build
 
@@ -20,6 +20,7 @@ make -j$(nproc)
 port: 443
 cert: cert.pem
 key: key.pem
+ca: ca.pem
 ```
 
 ```sh
