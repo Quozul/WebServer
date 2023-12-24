@@ -70,6 +70,6 @@ std::tuple<std::string, std::string, std::string> parse_start_line(const std::st
 
 std::tuple<std::string, std::unordered_map<std::string, std::string> > parse_url(const std::string &rawUrl);
 
-std::unordered_map<std::string, std::string> parse_headers(std::string &rawHeaders);
+std::unordered_map<std::string, std::string> parse_key_value(std::string &rawHeaders);
 
 #endif

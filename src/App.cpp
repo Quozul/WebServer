@@ -46,7 +46,11 @@ bool App::is_ssl_enabled() const {
 void App::run(const int port) {
     this->sockfd = create_socket(port);
 
-    std::cout << "Server listening!" << std::endl;
+    std::cout << "Server listening on port " << port << std::endl;
+
+    if (this->is_ssl_enabled()) {
+        std::cout << "SSL enabled." << std::endl;
+    }
 
     while (true) {
         sockaddr_in addr{};

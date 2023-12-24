@@ -1,15 +1,17 @@
 #include <iostream>
 #include <csignal>
 #include <csignal>
-#include <sstream>
 
 #include "src/App.h"
+#include "src/config.h"
 #include "src/responses/Request.h"
 #include "src/responses/Response.h"
 
 int main() {
     App app;
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
+
+    const auto [cert, key, port] = read_config();
 
     app.route("/", [](const Request &request) {
         Response response;
@@ -33,10 +35,13 @@ int main() {
         return response;
     });
 
-    const auto cert_file = "cert.pem";
-    const auto key_file = "key.pem";
+    if (cert.has_value() && key.has_value()) {
+        app
+                .enable_ssl(cert.value(), key.value())
+                .run(port);
+    }
 
-    app.enable_ssl(cert_file, key_file).run(8080);
+    app.run(port);
 
     return 0;
 }

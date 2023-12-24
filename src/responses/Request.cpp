@@ -11,7 +11,7 @@ Request Request::parse(const std::string &request) {
     auto [startLine, rawHeaders, body] = get_sections(request);
     auto [protocol, method, rawUrl] = parse_start_line(startLine);
     auto [path, params] = parse_url(rawUrl);
-    const auto headers = parse_headers(rawHeaders);
+    const auto headers = parse_key_value(rawHeaders);
 
     Request parsedRequest;
 
@@ -95,21 +95,4 @@ std::tuple<std::string, std::unordered_map<std::string, std::string> > parse_url
     }
 
     return {path, params};
-}
-
-std::unordered_map<std::string, std::string> parse_headers(std::string &rawHeaders) {
-    std::unordered_map<std::string, std::string> headers;
-    std::istringstream iss(rawHeaders);
-
-    while (std::getline(iss, rawHeaders, '\n')) {
-        const size_t equalIndex = rawHeaders.find(':');
-        std::string key = rawHeaders.substr(0, equalIndex);
-        std::string value = equalIndex == std::string::npos ? "" : rawHeaders.substr(equalIndex + 1);
-        trim(value);
-        trim(key);
-        to_lower_case_in_place(key);
-        headers[key] = value;
-    }
-
-    return headers;
 }

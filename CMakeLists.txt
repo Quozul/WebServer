@@ -5,9 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.h")
 
-add_executable(web_server_reboot main.cpp ${SOURCES}
-        src/string_manipulation.cpp
-        src/string_manipulation.h)
+add_executable(web_server_reboot main.cpp ${SOURCES})
 
 find_package(OpenSSL REQUIRED)
 target_link_libraries(web_server_reboot OpenSSL::SSL)
@@ -19,8 +17,7 @@ if(GTest_FOUND)
 
     file(GLOB_RECURSE SOURCES "test/*.cpp" "src/*.cpp" "src/*.h")
 
-    add_executable(web_server_reboot_test ${SOURCES}
-            test/request_test.cpp)
+    add_executable(web_server_reboot_test ${SOURCES})
 
     target_link_libraries(
             web_server_reboot_test

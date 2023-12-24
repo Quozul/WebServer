@@ -6,9 +6,9 @@
 
 class Connection {
 public:
-    Connection()= default;
+    Connection() = default;
 
-    virtual ~Connection()= default;
+    virtual ~Connection() = default;
 
     virtual std::string socket_read() = 0;
 
@@ -16,7 +16,6 @@ public:
 
     virtual void close_socket() = 0;
 };
-
 
 
 #endif
