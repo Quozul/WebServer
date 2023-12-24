@@ -1,9 +1,10 @@
 #ifndef SOCKETCONNECTION_H
 #define SOCKETCONNECTION_H
+
 #include "Connection.h"
 
-class SocketConnection final : public Connection {
-private:
+class SocketConnection : public Connection {
+protected:
     int client;
 
 public:

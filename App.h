@@ -1,26 +1,20 @@
 #ifndef APP_H
 #define APP_H
 
-
-#include <cstdio>
-#include <cstdlib>
 #include <functional>
-#include <iostream>
 #include <map>
-#include <csignal>
-#include <unistd.h>
 
 #include "connections/Connection.h"
 #include "responses/Request.h"
 #include "responses/Response.h"
-
-extern "C" {
-#include <netdb.h>
-}
+#include "SslHelpers.h"
 
 class App {
     int sockfd;
     std::map<std::string, std::function<Response (const Request &)> > routes;
+    SSL_CTX *ctx = nullptr;
+
+    bool is_ssl_enabled() const;
 
 public:
     App() = default;
@@ -32,6 +26,8 @@ public:
     void close_socket() const;
 
     void route(const std::string &path, const std::function<Response (const Request &)> &callback);
+
+    App& enable_ssl(const std::string &cert, const std::string &key);
 
     ~App() {
         close_socket();

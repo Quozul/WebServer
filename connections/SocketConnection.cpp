@@ -11,8 +11,8 @@ SocketConnection::SocketConnection(const int client) : Connection() {
 
 std::string SocketConnection::socket_read() {
     std::string final_buffer;
-
     ssize_t bytes_read = 0, pending = 0;
+
     do {
         char buffer[1024];
 

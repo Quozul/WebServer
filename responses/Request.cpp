@@ -89,7 +89,7 @@ std::unordered_map<std::string, std::string> parse_headers(std::string &rawHeade
         std::string token = rawHeaders.substr(0, pos);
         if (const size_t sep = token.find(':'); sep != std::string::npos) {
             auto key = token.substr(0, sep);
-            std::ranges::transform(key, key.begin(), [](const unsigned char character) {
+            std::transform(key.begin(), key.end(), key.begin(), [](const unsigned char character) {
                 return std::tolower(character);
             });
             headers.insert({key, token.substr(sep + 1)});

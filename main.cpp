@@ -2,26 +2,25 @@
 #include <csignal>
 #include <csignal>
 #include <sstream>
-#include <bits/signum-generic.h>
 
 #include "App.h"
 #include "responses/Request.h"
 #include "responses/Response.h"
 
 int main() {
-    const auto app = new App();
+    App app;
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
 
-    app->route("/", [](const Request &request) {
+    app.route("/", [](const Request &request) {
         Response response;
 
         response.set_header("content-type", "text/html");
-        response.set_body("This is a custom web server developed in C++ in the goal to use it on openbsd/riscv64. Try the other route <a href='/hello'>/hello</a>.");
+        response.set_body("This is a custom web server developed in C++ with the goal to use it on a RISC-V board. Try the other route <a href='/hello'>/hello</a>.");
 
         return response;
     });
 
-    app->route("/hello", [](const Request &request) {
+    app.route("/hello", [](const Request &request) {
         Response response;
         response.set_header("content-type", "text/html");
 
@@ -35,9 +34,10 @@ int main() {
         return response;
     });
 
-    app->run(8080);
-    delete app;
+    const auto cert_file = "cert.pem";
+    const auto key_file = "key.pem";
 
-    std::cout << "Hello, World!" << std::endl;
+    app.enable_ssl(cert_file, key_file).run(8080);
+
     return 0;
 }

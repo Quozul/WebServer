@@ -1,6 +1,16 @@
 #include "App.h"
 
+#include <cstdio>
+#include <cstdlib>
+#include <iostream>
+#include <unistd.h>
+#include <cstdio>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
 #include "connections/SocketConnection.h"
+#include "connections/SslConnection.h"
 
 
 int create_socket(const int port) {
@@ -29,6 +39,10 @@ int create_socket(const int port) {
     return sock;
 }
 
+bool App::is_ssl_enabled() const {
+    return this->ctx != nullptr;
+}
+
 void App::run(const int port) {
     this->sockfd = create_socket(port);
 
@@ -44,9 +58,17 @@ void App::run(const int port) {
             break;
         }
 
-        // TODO: Handle upgrade to TLS
-        SocketConnection connection(client);
-        this->accept_connection(connection);
+        if (this->is_ssl_enabled()) {
+            SslConnection connection(client, this->ctx);
+            if (!connection.is_ready) {
+                connection.close_socket();
+                continue;
+            }
+            this->accept_connection(connection);
+        } else {
+            SocketConnection connection(client);
+            this->accept_connection(connection);
+        }
     }
 }
 
@@ -73,4 +95,11 @@ void App::close_socket() const {
 
 void App::route(const std::string &path, const std::function<Response (const Request &)> &callback) {
     this->routes[path] = callback;
+}
+
+App& App::enable_ssl(const std::string &cert, const std::string &key) {
+    init_openssl();
+    this->ctx = create_context();
+    configure_context(this->ctx, cert.c_str(), key.c_str());
+    return *this;
 }

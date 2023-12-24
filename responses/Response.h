@@ -1,5 +1,6 @@
 #ifndef RESPONSEBUILDER_H
 #define RESPONSEBUILDER_H
+
 #include <map>
 #include <string>
 #include "Response.h"
