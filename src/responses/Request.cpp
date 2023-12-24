@@ -39,7 +39,12 @@ std::tuple<std::string, std::string, std::string> get_sections(const std::string
         return {startLine, "", ""};
     }
 
-    std::string headers = request.substr(endOfStartLine + CRLF_LEN, startOfBody - endOfStartLine - CRLF_LEN);
+    std::string headers = request.substr(endOfStartLine + CRLF_LEN, startOfBody - endOfStartLine);
+
+    if (startOfBody == std::string::npos) {
+        return {startLine, headers, ""};
+    }
+
     std::string parsedBody = request.substr(startOfBody + CRLF_CRLF_LEN);
 
     return {startLine, headers, parsedBody};
@@ -53,6 +58,17 @@ std::tuple<std::string, std::string, std::string> parse_start_line(const std::st
     if (rawUrl.empty()) {
         rawUrl = "/";
     }
+
+    if (protocol.empty()) {
+        protocol = "HTTP/0.9";
+    }
+
+    if (method.empty()) {
+        method = "GET";
+    }
+
+    to_upper_case_in_place(method);
+    to_upper_case_in_place(protocol);
 
     return {protocol, method, rawUrl};
 }
@@ -83,18 +99,16 @@ std::tuple<std::string, std::unordered_map<std::string, std::string> > parse_url
 
 std::unordered_map<std::string, std::string> parse_headers(std::string &rawHeaders) {
     std::unordered_map<std::string, std::string> headers;
-    size_t pos;
+    std::istringstream iss(rawHeaders);
 
-    while ((pos = rawHeaders.find(CRLF)) != std::string::npos) {
-        std::string token = rawHeaders.substr(0, pos);
-        if (const size_t sep = token.find(':'); sep != std::string::npos) {
-            auto key = token.substr(0, sep);
-            std::transform(key.begin(), key.end(), key.begin(), [](const unsigned char character) {
-                return std::tolower(character);
-            });
-            headers.insert({key, token.substr(sep + 1)});
-        }
-        rawHeaders.erase(0, pos + CRLF_LEN);
+    while (std::getline(iss, rawHeaders, '\n')) {
+        const size_t equalIndex = rawHeaders.find(':');
+        std::string key = rawHeaders.substr(0, equalIndex);
+        std::string value = equalIndex == std::string::npos ? "" : rawHeaders.substr(equalIndex + 1);
+        trim(value);
+        trim(key);
+        to_lower_case_in_place(key);
+        headers[key] = value;
     }
 
     return headers;

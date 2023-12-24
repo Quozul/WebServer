@@ -77,7 +77,7 @@ void App::accept_connection(Connection &connection) {
     const auto request = Request::parse(bytes);
 
     if (const auto path = request.get_path(); this->routes.contains(path)) {
-        const Response response = this->routes[path](request);
+        Response response = this->routes[path](request);
         connection.write_socket(response.build());
     } else {
         auto response = Response();

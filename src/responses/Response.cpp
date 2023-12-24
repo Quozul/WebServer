@@ -1,4 +1,6 @@
 #include "Response.h"
+#include "Request.h"
+#include "../string_manipulation.h"
 
 std::map<int, std::string> Response::codes = {
     {100, "Continue"},
@@ -69,14 +71,20 @@ void Response::set_body(const std::string &body) {
 }
 
 void Response::set_header(const std::string &key, const std::string &value) {
-    this->headers[key] = value;
+    std::string lower_key = key;
+    to_lower_case_in_place(lower_key);
+
+    this->headers[lower_key] = value;
 }
 
-std::string Response::build() const {
+std::string Response::build() {
     std::string response = "HTTP/1.0 " + std::to_string(this->response_code) + " " + codes[this->response_code] +
                            "\r\n";
-    for (const auto &[fst, snd]: this->headers) {
-        response.append(fst).append(": ").append(snd).append("\r\n");
+
+    this->set_header("content-length", std::to_string(body.length()));
+
+    for (const auto &[key, value]: this->headers) {
+        response.append(key).append(": ").append(value).append("\r\n");
     }
     response.append("\r\n");
     response.append(this->body);

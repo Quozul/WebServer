@@ -21,7 +21,7 @@ public:
 
     void set_status_code(const int &code);
 
-    [[nodiscard]] std::string build() const;
+    std::string build();
 };
 
 
