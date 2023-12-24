@@ -5,6 +5,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <cstdio>
+#include <future>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -40,7 +41,7 @@ int create_socket(const int port) {
 }
 
 bool App::is_ssl_enabled() const {
-    return this->ctx != nullptr;
+    return this->ssl_ctx != nullptr;
 }
 
 void App::run(const int port) {
@@ -63,10 +64,10 @@ void App::run(const int port) {
         }
 
         if (this->is_ssl_enabled()) {
-            SslConnection connection(client, this->ctx);
+            SslConnection connection(client, this->ssl_ctx);
             if (!connection.is_ready) {
                 connection.close_socket();
-                continue;
+                return;
             }
             this->accept_connection(connection);
         } else {
@@ -76,12 +77,12 @@ void App::run(const int port) {
     }
 }
 
-void App::accept_connection(Connection &connection) {
+void App::accept_connection(Connection &connection) const {
     const auto bytes = connection.socket_read();
     const auto request = Request::parse(bytes);
 
     if (const auto path = request.get_path(); this->routes.contains(path)) {
-        Response response = this->routes[path](request);
+        Response response = this->routes.at(path)(request);
         connection.write_socket(response.build());
     } else {
         auto response = Response();
@@ -103,7 +104,7 @@ void App::route(const std::string &path, const std::function<Response (const Req
 
 App& App::enable_ssl(const std::string &cert, const std::string &key) {
     init_openssl();
-    this->ctx = create_context();
-    configure_context(this->ctx, cert.c_str(), key.c_str());
+    this->ssl_ctx = create_context();
+    configure_context(this->ssl_ctx, cert.c_str(), key.c_str());
     return *this;
 }

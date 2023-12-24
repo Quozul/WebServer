@@ -17,7 +17,6 @@ SslConnection::SslConnection(const int client, SSL_CTX *ctx): SocketConnection(c
 
 std::string SslConnection::socket_read() {
     int bytes_read = 0, pending = 0;
-    size_t received = 0;
     std::string final_buffer;
 
     do {
@@ -26,7 +25,6 @@ std::string SslConnection::socket_read() {
         pending = SSL_pending(this->ssl);
 
         final_buffer.append(buffer);
-        received += bytes_read;
     } while (bytes_read > 0 && pending > 0);
 
     return final_buffer;

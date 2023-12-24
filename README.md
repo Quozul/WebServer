@@ -20,7 +20,6 @@ make -j$(nproc)
 port: 443
 cert: cert.pem
 key: key.pem
-ca: ca.pem
 ```
 
 ```sh

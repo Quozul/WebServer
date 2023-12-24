@@ -25,7 +25,6 @@ SSL_CTX *create_context() {
 void configure_context(SSL_CTX *ctx, const char *cert, const char *key) {
     SSL_CTX_set_ecdh_auto(ctx, 1);
 
-    /* Set the key and cert */
     if (SSL_CTX_use_certificate_chain_file(ctx, cert) <= 0) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);

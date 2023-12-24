@@ -13,7 +13,7 @@ int main() {
 
     const auto [cert, key, port] = read_config();
 
-    app.route("/", [](const Request &request) {
+    app.route("/", []([[maybe_unused]] const Request &request) {
         Response response;
 
         response.set_header("content-type", "text/html");

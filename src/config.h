@@ -2,12 +2,11 @@
 #define CONFIG_H
 
 #include <optional>
-#include <string>
 #include <filesystem>
 
 struct Config {
-    std::optional<std::string> cert;
-    std::optional<std::string> key;
+    std::optional<std::filesystem::path> cert;
+    std::optional<std::filesystem::path> key;
     int port{};
 };
 

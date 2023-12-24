@@ -9,25 +9,25 @@
 #include "responses/Response.h"
 #include "SslHelpers.h"
 
-class App {
-    int sockfd;
-    std::map<std::string, std::function<Response (const Request &)> > routes;
-    SSL_CTX *ctx = nullptr;
+class App final {
+    int sockfd{};
+    std::map<std::string, std::function<Response (const Request &)>> routes;
+    SSL_CTX *ssl_ctx = nullptr;
 
-    bool is_ssl_enabled() const;
+    [[nodiscard]] bool is_ssl_enabled() const;
 
 public:
     App() = default;
 
     void run(int port);
 
-    void accept_connection(Connection &connection);
+    void accept_connection(Connection &connection) const;
 
     void close_socket() const;
 
     void route(const std::string &path, const std::function<Response (const Request &)> &callback);
 
-    App& enable_ssl(const std::string &cert, const std::string &key);
+    App &enable_ssl(const std::string &cert, const std::string &key);
 
     ~App() {
         close_socket();
