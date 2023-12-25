@@ -27,7 +27,6 @@ std::string SslConnection::socket_read() {
     do {
         char buffer[1024];
 
-        tracing::trace("Waiting for data...");
         if (const auto operation = SSL_read(this->ssl, buffer, 1024); operation > 0) {
             bytes_read += operation;
         } else {
@@ -36,8 +35,8 @@ std::string SslConnection::socket_read() {
             }
         }
 
-        pending = SSL_pending(this->ssl);
         final_buffer.append(buffer);
+        pending = SSL_pending(this->ssl);
     } while (bytes_read > 0 && pending > 0);
 
     return final_buffer;

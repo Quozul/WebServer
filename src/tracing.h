@@ -41,7 +41,7 @@ namespace tracing {
     template<typename... Args>
     void error(std::format_string<Args...> fmt, Args &&... args) {
         const std::string formatted_string = std::vformat(fmt.get(), std::make_format_args(args...));
-        const std::string output = std::format("WARN: {} - {} ({})\n", get_formatted_time(), formatted_string, strerror(errno));
+        const std::string output = std::format("ERROR: {} - {} ({})\n", get_formatted_time(), formatted_string, strerror(errno));
 
         std::cerr << output;
     }

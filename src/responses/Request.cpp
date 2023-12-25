@@ -1,11 +1,30 @@
 #include "Request.h"
 
+#include <set>
 #include <sstream>
 
 #define CRLF "\r\n"
 #define CRLF_CRLF "\r\n\r\n"
 #define CRLF_LEN 2
 #define CRLF_CRLF_LEN 4
+
+std::set<std::string> methods = {
+    "CONNECT",
+    "DELETE",
+    "GET",
+    "HEAD",
+    "OPTIONS",
+    "PATCH",
+    "POST",
+    "PUT",
+    "TRACE"
+};
+
+std::set<std::string> protocols = {
+    "HTTP/0.9",
+    "HTTP/1.0",
+    "HTTP/1.1"
+};
 
 Request Request::parse(const std::string &request) {
     auto [startLine, rawHeaders, body] = get_sections(request);
@@ -24,6 +43,14 @@ Request Request::parse(const std::string &request) {
     parsedRequest.full_url = rawUrl;
 
     return parsedRequest;
+}
+
+bool is_valid_request_method(const std::string &method) {
+    return methods.contains(method);
+}
+
+bool is_valid_protocol(const std::string &protocol) {
+    return protocols.contains(protocol);
 }
 
 std::tuple<std::string, std::string, std::string> get_sections(const std::string &request) {
@@ -56,20 +83,20 @@ std::tuple<std::string, std::string, std::string> parse_start_line(const std::st
     std::string method, rawUrl, protocol;
     iss >> method >> rawUrl >> protocol;
 
+    to_upper_case_in_place(method);
+    to_upper_case_in_place(protocol);
+
     if (rawUrl.empty()) {
         rawUrl = "/";
     }
 
-    if (protocol.empty()) {
+    if (protocol.empty() || !is_valid_protocol(protocol)) {
         protocol = "HTTP/0.9";
     }
 
-    if (method.empty()) {
+    if (method.empty() || !is_valid_request_method(method)) {
         method = "GET";
     }
-
-    to_upper_case_in_place(method);
-    to_upper_case_in_place(protocol);
 
     return {protocol, method, rawUrl};
 }

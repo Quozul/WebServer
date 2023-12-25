@@ -24,6 +24,8 @@ public:
 
     void run(int port);
 
+    void handle_client(const int &client) const;
+
     void accept_connection(Connection &connection) const;
 
     void close_socket() const;

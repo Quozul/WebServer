@@ -46,6 +46,23 @@ TEST(RequestTest, ShouldHandleEmptyRequests) {
     EXPECT_STREQ(request.get_body().c_str(), "");
 }
 
+TEST(RequestTest, JunkShouldFallbackToDefault) {
+    // Given
+    const std::string request_string = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+    // When
+    const Request request = Request::parse(request_string);
+
+    // Then
+    EXPECT_STREQ(request.get_method().c_str(), "GET");
+    EXPECT_STREQ(request.get_path().c_str(), "/");
+    EXPECT_STREQ(request.get_full_url().c_str(), "/");
+    EXPECT_STREQ(request.get_protocol().c_str(), "HTTP/0.9");
+    EXPECT_EQ(request.get_headers().size(), 0);
+    EXPECT_EQ(request.get_params().size(), 0);
+    EXPECT_STREQ(request.get_body().c_str(), "");
+}
+
 TEST(RequestTest, HandleCompleteRequest) {
     // Given
     const std::string request_string =
@@ -76,10 +93,6 @@ TEST(RequestTest, ShouldBeCaseInsensitiveForHeaders) {
 
     // When
     const Request request = Request::parse(request_string);
-
-    for (auto [fst, snd]: request.get_params()) {
-        printf("%s %s\n", fst.c_str(), snd.c_str());
-    }
 
     // Then
     EXPECT_STREQ(request.get_method().c_str(), "GET");
