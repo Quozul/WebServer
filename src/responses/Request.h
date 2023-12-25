@@ -12,6 +12,7 @@ struct Request {
 private:
     std::string protocol;
     std::string method;
+    std::string full_url;
     std::string path;
     std::unordered_map<std::string, std::string> params;
     std::unordered_map<std::string, std::string> headers;
@@ -45,6 +46,10 @@ public:
         return body;
     }
 
+    std::string get_full_url() const {
+        return full_url;
+    }
+
     std::string get_method() const {
         return method;
     }
@@ -69,7 +74,5 @@ std::tuple<std::string, std::string, std::string> get_sections(const std::string
 std::tuple<std::string, std::string, std::string> parse_start_line(const std::string &startLine);
 
 std::tuple<std::string, std::unordered_map<std::string, std::string> > parse_url(const std::string &rawUrl);
-
-std::unordered_map<std::string, std::string> parse_key_value(std::string &rawHeaders);
 
 #endif

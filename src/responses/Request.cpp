@@ -21,6 +21,7 @@ Request Request::parse(const std::string &request) {
     parsedRequest.params = params;
     parsedRequest.headers = headers;
     parsedRequest.body = body;
+    parsedRequest.full_url = rawUrl;
 
     return parsedRequest;
 }

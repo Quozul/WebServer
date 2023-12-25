@@ -11,6 +11,7 @@ TEST(RequestTest, ShouldHandleHttp09Request) {
     // Then
     EXPECT_STREQ(request.get_method().c_str(), "GET");
     EXPECT_STREQ(request.get_path().c_str(), "/");
+    EXPECT_STREQ(request.get_full_url().c_str(), "/");
     EXPECT_STREQ(request.get_protocol().c_str(), "HTTP/0.9");
 }
 
@@ -24,6 +25,7 @@ TEST(RequestTest, ShouldHandleHttp09RequestWithNoProtocol) {
     // Then
     EXPECT_STREQ(request.get_method().c_str(), "GET");
     EXPECT_STREQ(request.get_path().c_str(), "/");
+    EXPECT_STREQ(request.get_full_url().c_str(), "/");
     EXPECT_STREQ(request.get_protocol().c_str(), "HTTP/0.9");
 }
 
@@ -37,6 +39,7 @@ TEST(RequestTest, ShouldHandleEmptyRequests) {
     // Then
     EXPECT_STREQ(request.get_method().c_str(), "GET");
     EXPECT_STREQ(request.get_path().c_str(), "/");
+    EXPECT_STREQ(request.get_full_url().c_str(), "/");
     EXPECT_STREQ(request.get_protocol().c_str(), "HTTP/0.9");
     EXPECT_EQ(request.get_headers().size(), 0);
     EXPECT_EQ(request.get_params().size(), 0);
@@ -54,6 +57,7 @@ TEST(RequestTest, HandleCompleteRequest) {
     // Then
     EXPECT_STREQ(request.get_method().c_str(), "POST");
     EXPECT_STREQ(request.get_path().c_str(), "/submit-form");
+    EXPECT_STREQ(request.get_full_url().c_str(), "/submit-form?foo=bar&baz");
     EXPECT_STREQ(request.get_param("foo").value().c_str(), "bar");
     EXPECT_STREQ(request.get_param("baz").value().c_str(), "");
     EXPECT_STREQ(request.get_protocol().c_str(), "HTTP/1.1");
@@ -80,6 +84,7 @@ TEST(RequestTest, ShouldBeCaseInsensitiveForHeaders) {
     // Then
     EXPECT_STREQ(request.get_method().c_str(), "GET");
     EXPECT_STREQ(request.get_path().c_str(), "/submit-form");
+    EXPECT_STREQ(request.get_full_url().c_str(), "/submit-form?FOO=bar&BaZ");
     EXPECT_STREQ(request.get_param("FOO").value().c_str(), "bar");
     EXPECT_EQ(request.get_param("foo").has_value(), false);
     EXPECT_STREQ(request.get_param("BaZ").value().c_str(), "");
@@ -107,10 +112,12 @@ TEST(RequestTest, ShouldHandleAdditionnalCharactersInHeaders) {
     // Then
     EXPECT_STREQ(request.get_method().c_str(), "GET");
     EXPECT_STREQ(request.get_path().c_str(), "/");
+    EXPECT_STREQ(request.get_full_url().c_str(), "/");
     EXPECT_EQ(request.get_params().size(), 0);
     EXPECT_STREQ(request.get_protocol().c_str(), "HTTP/1.0");
 
-    EXPECT_STREQ(request.get_header("user-agent").value().c_str(), "Mozilla/5.0 (X11; Linux x86_64; rv:10.0.12) Gecko/20130109 Firefox/10.0.12");
+    EXPECT_STREQ(request.get_header("user-agent").value().c_str(),
+                 "Mozilla/5.0 (X11; Linux x86_64; rv:10.0.12) Gecko/20130109 Firefox/10.0.12");
 
     EXPECT_STREQ(request.get_body().c_str(), "");
 }

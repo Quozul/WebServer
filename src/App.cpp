@@ -4,12 +4,13 @@
 #include <cstdlib>
 #include <iostream>
 #include <unistd.h>
-#include <cstdio>
+#include <format>
 #include <future>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include "tracing.h"
 #include "connections/SocketConnection.h"
 #include "connections/SslConnection.h"
 
@@ -23,17 +24,17 @@ int create_socket(const int port) {
 
     const int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
-        perror("Unable to create socket");
+        tracing::error("Unable to create socket");
         exit(EXIT_FAILURE);
     }
 
     if (bind(sock, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0) {
-        perror("Unable to bind");
+        tracing::error("Unable to bind");
         exit(EXIT_FAILURE);
     }
 
     if (listen(sock, 1) < 0) {
-        perror("Unable to listen");
+        tracing::error("Unable to listen");
         exit(EXIT_FAILURE);
     }
 
@@ -47,11 +48,7 @@ bool App::is_ssl_enabled() const {
 void App::run(const int port) {
     this->sockfd = create_socket(port);
 
-    std::cout << "Server listening on port " << port << std::endl;
-
-    if (this->is_ssl_enabled()) {
-        std::cout << "SSL enabled." << std::endl;
-    }
+    tracing::trace("Server listening on port {}.", port);
 
     while (true) {
         sockaddr_in addr{};
@@ -59,7 +56,7 @@ void App::run(const int port) {
 
         const int client = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
         if (client < 0) {
-            perror("Unable to accept");
+            tracing::warn("Unable to accept");
             break;
         }
 
@@ -81,6 +78,8 @@ void App::accept_connection(Connection &connection) const {
     const auto bytes = connection.socket_read();
     const auto request = Request::parse(bytes);
 
+    tracing::trace("{} {}", request.get_method(), request.get_full_url());
+
     if (const auto path = request.get_path(); this->routes.contains(path)) {
         Response response = this->routes.at(path)(request);
         connection.write_socket(response.build());
@@ -94,7 +93,7 @@ void App::accept_connection(Connection &connection) const {
 }
 
 void App::close_socket() const {
-    std::cout << "Closing server." << std::flush;
+    tracing::trace("Closing server.");
     close(sockfd);
 }
 
@@ -102,9 +101,10 @@ void App::route(const std::string &path, const std::function<Response (const Req
     this->routes[path] = callback;
 }
 
-App& App::enable_ssl(const std::string &cert, const std::string &key) {
+App &App::enable_ssl(const std::string &cert, const std::string &key) {
     init_openssl();
     this->ssl_ctx = create_context();
     configure_context(this->ssl_ctx, cert.c_str(), key.c_str());
+    tracing::trace("SSL enabled");
     return *this;
 }

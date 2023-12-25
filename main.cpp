@@ -36,9 +36,7 @@ int main() {
     });
 
     if (cert.has_value() && key.has_value()) {
-        app
-                .enable_ssl(cert.value(), key.value())
-                .run(port);
+        app.enable_ssl(cert.value(), key.value());
     }
 
     app.run(port);
