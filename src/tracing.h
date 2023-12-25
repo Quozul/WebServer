@@ -1,7 +1,7 @@
 #ifndef TRACING_H
 #define TRACING_H
 
-#include <format>
+#include <fmt/core.h>
 #include <cerrno>
 #include <iostream>
 #include <chrono>
@@ -22,28 +22,26 @@ namespace tracing {
         return now_str;
     }
 
-    template<typename... Args>
-    void trace(std::format_string<Args...> fmt, Args &&... args) {
-        const std::string formatted_string = std::vformat(fmt.get(), std::make_format_args(args...));
-        const std::string output = std::format("INFO: {} - {}\n", get_formatted_time(), formatted_string);
-
+    template<typename... T>
+    void trace(const std::string &level, fmt::format_string<T...> fmt, T&&... args) {
+        const std::string formatted_string = fmt::format(fmt, std::forward<T>(args)...);
+        const std::string output = fmt::format("{}: {} - {}\n", level, get_formatted_time(), formatted_string);
         std::cout << output;
     }
 
-    template<typename... Args>
-    void warn(std::format_string<Args...> fmt, Args &&... args) {
-        const std::string formatted_string = std::vformat(fmt.get(), std::make_format_args(args...));
-        const std::string output = std::format("WARN: {} - {}\n", get_formatted_time(), formatted_string);
-
-        std::cout << output;
+    template<typename... T>
+    void info(fmt::format_string<T...> fmt, T&&... args) {
+        trace("INFO", fmt, std::forward<T>(args)...);
     }
 
-    template<typename... Args>
-    void error(std::format_string<Args...> fmt, Args &&... args) {
-        const std::string formatted_string = std::vformat(fmt.get(), std::make_format_args(args...));
-        const std::string output = std::format("ERROR: {} - {} ({})\n", get_formatted_time(), formatted_string, strerror(errno));
+    template<typename... T>
+    void warn(fmt::format_string<T...> fmt, T&&... args) {
+        trace("WARN", fmt, std::forward<T>(args)...);
+    }
 
-        std::cerr << output;
+    template<typename... T>
+    void error(fmt::format_string<T...> fmt, T&&... args) {
+        trace("ERROR", fmt, std::forward<T>(args)...);
     }
 }
 

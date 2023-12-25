@@ -9,7 +9,8 @@ file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.h")
 add_executable(web_server_reboot main.cpp ${SOURCES})
 
 find_package(OpenSSL REQUIRED)
-target_link_libraries(web_server_reboot OpenSSL::SSL)
+find_package(fmt REQUIRED)
+target_link_libraries(web_server_reboot OpenSSL::SSL fmt::fmt)
 
 
 find_package(GTest QUIET)
@@ -24,6 +25,7 @@ if(GTest_FOUND)
             web_server_reboot_test
             GTest::gtest_main
             OpenSSL::SSL
+            fmt::fmt
     )
 
     include(GoogleTest)

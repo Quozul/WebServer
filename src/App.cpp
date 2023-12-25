@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <format>
 #include <future>
+#include <vector>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -50,7 +51,7 @@ bool App::is_ssl_enabled() const {
 void App::run(const int port) {
     this->sockfd = create_socket(port);
 
-    tracing::trace("Server listening on port {}.", port);
+    tracing::info("Server listening on port {}.", port);
 
     std::vector<std::future<void>> pending_futures;
 
@@ -91,7 +92,7 @@ void App::accept_connection(Connection &connection) const {
             const auto bytes = connection.socket_read();
             const auto request = Request::parse(bytes);
 
-            tracing::trace("{} {}", request.get_method(), request.get_full_url());
+            tracing::info("{} {}", request.get_method(), request.get_full_url());
 
             if (const auto path = request.get_path(); this->routes.contains(path)) {
                 Response response = this->routes.at(path)(request);
@@ -103,11 +104,11 @@ void App::accept_connection(Connection &connection) const {
             }
 
             if (request.get_header("connection") != "keep-alive") {
-                tracing::trace("Connection is not keep-alive. Closing socket.");
+                tracing::info("Connection is not keep-alive. Closing socket.");
                 break;
             }
         } catch (const std::runtime_error &e) {
-            tracing::trace("Connection closed.");
+            tracing::info("Connection closed.");
             break;
         }
     }
@@ -116,7 +117,7 @@ void App::accept_connection(Connection &connection) const {
 }
 
 void App::close_socket() const {
-    tracing::trace("Closing server.");
+    tracing::info("Closing server.");
     close(sockfd);
 }
 
@@ -128,6 +129,6 @@ App &App::enable_ssl(const std::string &cert, const std::string &key) {
     init_openssl();
     this->ssl_ctx = create_context();
     configure_context(this->ssl_ctx, cert.c_str(), key.c_str());
-    tracing::trace("SSL enabled");
+    tracing::info("SSL enabled");
     return *this;
 }

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <csignal>
 #include <csignal>
-#include <format>
+#include <fmt/core.h>
 
 #include "src/App.h"
 #include "src/config.h"
@@ -50,7 +50,7 @@ int main() {
             )");
         } else {
             const auto body = request.get_body();
-            response.set_body(std::format("File size: {}", body.size()));
+            response.set_body(fmt::format("File size: {}", body.size()));
         }
 
         return response;
