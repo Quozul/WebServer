@@ -1,18 +1,23 @@
 #include "SslConnection.h"
 
+#include <stdexcept>
 #include <unistd.h>
 #include <openssl/err.h>
+
+#include "../tracing.h"
 
 
 SslConnection::SslConnection(const int client, SSL_CTX *ctx): SocketConnection(client) {
     this->ssl = SSL_new(ctx);
     SSL_set_fd(this->ssl, this->client);
+}
 
+bool SslConnection::handshake() const {
     if (SSL_accept(this->ssl) <= 0) {
-        this->is_ready = false;
-    } else {
-        this->is_ready = true;
+        return false;
     }
+
+    return true;
 }
 
 std::string SslConnection::socket_read() {
@@ -21,9 +26,17 @@ std::string SslConnection::socket_read() {
 
     do {
         char buffer[1024];
-        bytes_read += SSL_read(this->ssl, buffer, 1024);
-        pending = SSL_pending(this->ssl);
 
+        tracing::trace("Waiting for data...");
+        if (const auto operation = SSL_read(this->ssl, buffer, 1024); operation > 0) {
+            bytes_read += operation;
+        } else {
+            if (const auto shutdown = SSL_get_shutdown(this->ssl); shutdown == SSL_RECEIVED_SHUTDOWN || shutdown == SSL_SENT_SHUTDOWN) {
+                throw std::runtime_error("Connection closed");
+            }
+        }
+
+        pending = SSL_pending(this->ssl);
         final_buffer.append(buffer);
     } while (bytes_read > 0 && pending > 0);
 

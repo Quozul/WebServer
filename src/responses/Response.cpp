@@ -78,7 +78,7 @@ void Response::set_header(const std::string &key, const std::string &value) {
 }
 
 std::string Response::build() {
-    std::string response = "HTTP/1.0 " + std::to_string(this->response_code) + " " + codes[this->response_code] +
+    std::string response = "HTTP/1.1 " + std::to_string(this->response_code) + " " + codes[this->response_code] +
                            "\r\n";
 
     this->set_header("content-length", std::to_string(body.length()));

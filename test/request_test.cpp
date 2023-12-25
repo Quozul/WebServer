@@ -121,3 +121,42 @@ TEST(RequestTest, ShouldHandleAdditionnalCharactersInHeaders) {
 
     EXPECT_STREQ(request.get_body().c_str(), "");
 }
+
+TEST(RequestTest, ActualFileUpload) {
+    // Given
+    const std::string request_string = "POST /file HTTP/1.1\r\n\
+Host: localhost:8080\r\n\
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0\r\n\
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8\r\n\
+Accept-Language: en-US,en;q=0.5\r\n\
+Accept-Encoding: gzip, deflate, br\r\n\
+Referer: https://localhost:8080/file\r\n\
+Content-Type: application/x-www-form-urlencoded\r\n\
+Content-Length: 26\r\n\
+Origin: https://localhost:8080\r\n\
+DNT: 1\r\n\
+Sec-GPC: 1\r\n\
+Connection: keep-alive\r\n\
+Upgrade-Insecure-Requests: 1\r\n\
+Sec-Fetch-Dest: document\r\n\
+Sec-Fetch-Mode: navigate\r\n\
+Sec-Fetch-Site: same-origin\r\n\
+Pragma: no-cache\r\n\
+Cache-Control: no-cache\r\n\
+\r\n\
+file=large-response%281%29";
+
+    // When
+    const Request request = Request::parse(request_string);
+
+    // Then
+    EXPECT_STREQ(request.get_method().c_str(), "POST");
+    EXPECT_STREQ(request.get_path().c_str(), "/file");
+    EXPECT_STREQ(request.get_full_url().c_str(), "/file");
+    EXPECT_EQ(request.get_params().size(), 0);
+    EXPECT_STREQ(request.get_protocol().c_str(), "HTTP/1.1");
+    EXPECT_STREQ(request.get_header("Host").value().c_str(), "localhost:8080");
+    EXPECT_STREQ(request.get_header("Cache-Control").value().c_str(), "no-cache");
+    EXPECT_STREQ(request.get_header("Accept").value().c_str(), "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8");
+    EXPECT_EQ(request.get_body().size(), 26);
+}

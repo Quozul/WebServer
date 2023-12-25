@@ -1,6 +1,7 @@
 #include <iostream>
 #include <csignal>
 #include <csignal>
+#include <format>
 
 #include "src/App.h"
 #include "src/config.h"
@@ -17,7 +18,8 @@ int main() {
         Response response;
 
         response.set_header("content-type", "text/html");
-        response.set_body("This is a custom web server developed in C++ with the goal to use it on a RISC-V board. Try the other route <a href='/hello'>/hello</a>.");
+        response.set_body(
+            "This is a custom web server developed in C++ with the goal to use it on a RISC-V board. Try the other route <a href='/hello'>/hello</a>.");
 
         return response;
     });
@@ -30,6 +32,25 @@ int main() {
             response.set_body("<h1>Hello, " + name.value() + "!</h1>");
         } else {
             response.set_body("<a href='/hello?name=world'>World</a>");
+        }
+
+        return response;
+    });
+
+    app.route("/file", [](const Request &request) {
+        Response response;
+        response.set_header("content-type", "text/html");
+
+        if (request.get_method() != "POST") {
+            response.set_body(R"(
+                <form action="/file" method="post" enctype="multipart/form-data">
+                    <input type="file" name="file" />
+                    <input type="submit" value="Upload" />
+                </form>
+            )");
+        } else {
+            const auto body = request.get_body();
+            response.set_body(std::format("File size: {}", body.size()));
         }
 
         return response;

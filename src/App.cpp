@@ -2,7 +2,7 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <iostream>
+#include <poll.h>
 #include <unistd.h>
 #include <format>
 #include <future>
@@ -62,9 +62,9 @@ void App::run(const int port) {
 
         if (this->is_ssl_enabled()) {
             SslConnection connection(client, this->ssl_ctx);
-            if (!connection.is_ready) {
+            if (!connection.handshake()) {
                 connection.close_socket();
-                return;
+                continue;
             }
             this->accept_connection(connection);
         } else {
@@ -75,18 +75,32 @@ void App::run(const int port) {
 }
 
 void App::accept_connection(Connection &connection) const {
-    const auto bytes = connection.socket_read();
-    const auto request = Request::parse(bytes);
+    while (true) {
+        try {
+            tracing::trace("New request");
+            const auto bytes = connection.socket_read();
+            const auto request = Request::parse(bytes);
 
-    tracing::trace("{} {}", request.get_method(), request.get_full_url());
+            tracing::trace("RAW REQUEST {}", bytes);
+            tracing::trace("ACCESS: {} {}", request.get_method(), request.get_full_url());
 
-    if (const auto path = request.get_path(); this->routes.contains(path)) {
-        Response response = this->routes.at(path)(request);
-        connection.write_socket(response.build());
-    } else {
-        auto response = Response();
-        response.set_status_code(404);
-        connection.write_socket(response.build());
+            if (const auto path = request.get_path(); this->routes.contains(path)) {
+                Response response = this->routes.at(path)(request);
+                connection.write_socket(response.build());
+            } else {
+                auto response = Response();
+                response.set_status_code(404);
+                connection.write_socket(response.build());
+            }
+
+            if (request.get_header("connection") != "keep-alive") {
+                tracing::trace("Connection is not keep-alive. Closing socket.");
+                break;
+            }
+        } catch (const std::runtime_error &e) {
+            tracing::trace("Connection closed.");
+            break;
+        }
     }
 
     connection.close_socket();

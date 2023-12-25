@@ -3,6 +3,8 @@
 
 #include <format>
 #include <cerrno>
+#include <iostream>
+#include <chrono>
 
 namespace tracing {
     inline std::string get_formatted_time() {
