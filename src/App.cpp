@@ -2,14 +2,13 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <poll.h>
 #include <unistd.h>
-#include <format>
 #include <future>
 #include <vector>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <fcntl.h>
 
 #include "tracing.h"
 #include "connections/SocketConnection.h"
@@ -40,6 +39,10 @@ int create_socket(const int port) {
     }
 
     setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, nullptr, 0);
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, nullptr, 0);
+    setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, nullptr, 0);
+
+    fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
     return sockfd;
 }
@@ -53,20 +56,32 @@ void App::run(const int port) {
 
     tracing::info("Server listening on port {}.", port);
 
-    std::vector<std::future<void>> pending_futures;
+    std::vector<std::future<void> > pending_futures;
+
+    fd_set read_set;
+    FD_ZERO(&read_set);
+    FD_SET(sockfd, &read_set);
 
     while (true) {
         sockaddr_in addr{};
         uint len = sizeof(addr);
 
-        const int client = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
-        if (client < 0) {
-            tracing::warn("Unable to accept");
-            break;
+        select(sockfd + 1, &read_set, nullptr, nullptr, nullptr);
+
+        if (FD_ISSET(sockfd, &read_set)) {
+            const int client = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
+            if (client < 0) {
+                tracing::warn("Unable to accept");
+                break;
+            }
+
+            auto new_future = std::async(std::launch::async, &App::handle_client, this, std::ref(client));
+            pending_futures.push_back(std::move(new_future));
         }
 
-        auto future = std::async(std::launch::async, &App::handle_client, this, std::ref(client));
-        pending_futures.push_back(std::move(future));
+        std::erase_if(pending_futures, [](const auto &future) {
+            return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+        });
     }
 }
 
@@ -102,13 +117,7 @@ void App::accept_connection(Connection &connection) const {
                 response.set_status_code(404);
                 connection.write_socket(response.build());
             }
-
-            if (request.get_header("connection") != "keep-alive") {
-                tracing::info("Connection is not keep-alive. Closing socket.");
-                break;
-            }
         } catch (const std::runtime_error &e) {
-            tracing::info("Connection closed.");
             break;
         }
     }
