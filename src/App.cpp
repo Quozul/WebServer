@@ -62,7 +62,7 @@ void App::run(const int port) {
     FD_ZERO(&read_set);
     FD_SET(sockfd, &read_set);
 
-    while (true) {
+    while (this->is_running) {
         sockaddr_in addr{};
         uint len = sizeof(addr);
 
@@ -109,14 +109,12 @@ void App::accept_connection(Connection &connection) const {
 
             tracing::info("{} {}", request.get_method(), request.get_full_url());
 
-            if (const auto path = request.get_path(); this->routes.contains(path)) {
-                Response response = this->routes.at(path)(request);
-                connection.write_socket(response.build());
-            } else {
-                auto response = Response();
-                response.set_status_code(404);
-                connection.write_socket(response.build());
-            }
+            Response response = handle_request(request);
+            connection.write_socket(response.build());
+        } catch (UndefinedRoute &e) {
+            auto response = Response{};
+            response.set_status_code(404);
+            connection.write_socket(response.build());
         } catch (const std::runtime_error &e) {
             break;
         }
@@ -128,10 +126,23 @@ void App::accept_connection(Connection &connection) const {
 void App::close_socket() const {
     tracing::info("Closing server.");
     close(sockfd);
+
+    if (this->ssl_ctx != nullptr) {
+        SSL_CTX_free(this->ssl_ctx);
+    }
+    tracing::info("Server closed!");
 }
 
-void App::route(const std::string &path, const std::function<Response (const Request &)> &callback) {
+void App::route(const std::string &path, const Handler &callback) {
     this->routes[path] = callback;
+}
+
+Response App::handle_request(const Request &request) const {
+    if (const auto path = request.get_path(); this->routes.contains(path)) {
+        return this->routes.at(path)(request);
+    }
+
+    throw UndefinedRoute{};
 }
 
 App &App::enable_ssl(const std::string &cert, const std::string &key) {

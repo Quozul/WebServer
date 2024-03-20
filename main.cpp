@@ -8,8 +8,22 @@
 #include "src/responses/Request.h"
 #include "src/responses/Response.h"
 
+App *g_app;
+
+void signal_handler(int) {
+    if (g_app) {
+        g_app->close_socket();
+        std::exit(0);
+    }
+}
+
 int main() {
     App app;
+    g_app = &app;
+    std::signal(SIGINT, signal_handler);
+    std::signal(SIGTERM, signal_handler);
+    std::signal(SIGABRT, signal_handler);
+
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
 
     const auto [cert, key, port] = read_config();

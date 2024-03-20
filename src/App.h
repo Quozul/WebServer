@@ -11,11 +11,14 @@
 #include "responses/Response.h"
 #include "SslHelpers.h"
 
+typedef std::function<Response (const Request &)> Handler;
+
 class App final {
     int sockfd{};
-    std::map<std::string, std::function<Response (const Request &)>> routes;
+    std::map<std::string, Handler> routes;
     SSL_CTX *ssl_ctx = nullptr;
     std::ofstream log_file;
+    bool is_running = true;
 
     [[nodiscard]] bool is_ssl_enabled() const;
 
@@ -30,7 +33,14 @@ public:
 
     void close_socket() const;
 
-    void route(const std::string &path, const std::function<Response (const Request &)> &callback);
+    void route(const std::string &path, const Handler &callback);
+
+    /**
+     * @throws UndefinedRoute
+     * @param request
+     * @return
+     */
+    Response handle_request(const Request &request) const;
 
     App &enable_ssl(const std::string &cert, const std::string &key);
 
@@ -40,6 +50,9 @@ public:
         }
         close_socket();
     }
+};
+
+class UndefinedRoute final : public std::exception {
 };
 
 #endif

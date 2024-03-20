@@ -7,7 +7,6 @@
 
 
 class SslConnection final : public SocketConnection {
-private:
     SSL *ssl;
 
 public:

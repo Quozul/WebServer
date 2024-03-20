@@ -17,7 +17,7 @@ find_package(GTest QUIET)
 if(GTest_FOUND)
     enable_testing()
 
-    file(GLOB_RECURSE SOURCES "test/*.cpp" "src/*.cpp" "src/*.h")
+    file(GLOB_RECURSE SOURCES "test/*_test.cpp" "src/*.cpp" "src/*.h")
 
     add_executable(web_server_reboot_test ${SOURCES})
 
