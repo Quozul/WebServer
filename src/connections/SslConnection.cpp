@@ -31,7 +31,7 @@ int get_buffer_size(const size_t remaining) {
 
 Request SslConnection::socket_read() {
     RequestParser parser{};
-    char buffer[BUFFER_SIZE];
+    const auto buffer = new char[BUFFER_SIZE];
 
     while (!parser.is_complete()) {
         const auto buffer_size = get_buffer_size(parser.remaining_bytes());
@@ -70,6 +70,7 @@ Request SslConnection::socket_read() {
         }
     }
 
+    delete[] buffer;
     return parser.request;
 }
 

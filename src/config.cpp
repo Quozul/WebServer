@@ -23,7 +23,7 @@ Config read_config() {
     if (const auto config_path = look_for_config(); config_path.has_value()) {
         std::ifstream config_file(config_path.value());
         auto content = std::string(std::istreambuf_iterator(config_file), std::istreambuf_iterator<char>());
-        auto parsed_config = parse_key_value(content);
+        auto parsed_config = parse_key_values(content);
 
         if (parsed_config.contains("cert")) {
             config.cert = parsed_config["cert"];

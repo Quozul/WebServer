@@ -3,6 +3,7 @@
 #include <iostream>
 #include <regex>
 #include "../string_manipulation.h"
+#include "../tracing.h"
 
 #define CRLF "\r\n"
 #define CRLF_CRLF "\r\n\r\n"
@@ -10,20 +11,35 @@
 
 void RequestParser::append_content(const std::string &content) {
     full_request.append(content);
+    bool skip = false;
 
-    // TODO: Resume parsing where we left of to skip a few steps
+    if (state == Status) {
+        const auto status_line_end_index = content.find(CRLF);
+        auto status_line = content.substr(0, status_line_end_index);
+        parse_status_line(request, rtrim(status_line));
+        parsed_bytes = status_line_end_index + 2;
 
-    const auto status_line_end_index = full_request.find(CRLF);
-    auto status_line = full_request.substr(0, status_line_end_index);
+        state = Headers;
+    }
 
-    parse_status_line(request, rtrim(status_line));
+    if (state == Headers) {
+        const size_t start_of_body = full_request.find(CRLF_CRLF, parsed_bytes);
+        auto headers = full_request.substr(parsed_bytes, start_of_body);
 
-    const size_t start_of_body = full_request.find(CRLF_CRLF, status_line_end_index);
-    auto headers = full_request.substr(status_line_end_index, start_of_body);
+        request.headers = parse_key_values(headers);
 
-    request.headers = parse_key_value(headers);
+        parsed_bytes = start_of_body + 4;
 
-    request.body = full_request.substr(start_of_body + 4);
+        if (has_body()) {
+            skip = true;
+            state = Body;
+        }
+    }
+
+    if (state == Body) {
+        const auto body = skip ? content.substr(parsed_bytes) : content;
+        request.body.append(body);
+    }
 }
 
 size_t RequestParser::remaining_bytes() const {
@@ -31,25 +47,40 @@ size_t RequestParser::remaining_bytes() const {
         return -1; // This causes an overflow telling to read as much as possible
     }
 
-    if (const auto content_length = request.get_header("content-length"); content_length.has_value()) {
-        const size_t numerical_value = std::stoi(content_length.value());
-        const size_t body_size = request.body.size();
+    const size_t content_length = get_content_length();
 
-        if (body_size >= numerical_value) {
-            return 0;
-        }
-
-        const size_t remaining = numerical_value - body_size;
-        constexpr size_t zero = 0;
-        const size_t remaining_adjusted = std::max(zero, remaining);
-        return remaining_adjusted;
+    if (content_length == 0) {
+        return 0;
     }
 
-    return 0;
+    const size_t body_size = request.body.size();
+
+    if (body_size >= content_length) {
+        return 0;
+    }
+
+    const size_t remaining = content_length - body_size;
+    constexpr size_t zero = 0;
+    const size_t remaining_adjusted = std::max(zero, remaining);
+
+    return remaining_adjusted;
 }
 
 bool RequestParser::is_complete() const {
     return remaining_bytes() == 0;
+}
+
+size_t RequestParser::get_content_length() const {
+    const auto content_length = request.get_header("content-length");
+    if (content_length.has_value()) {
+        const size_t numerical_value = std::stoi(content_length.value());
+        return numerical_value;
+    }
+    return 0;
+}
+
+bool RequestParser::has_body() const {
+    return get_content_length() != 0;
 }
 
 void parse_status_line(Request &request, const std::string &status_line) {

@@ -14,19 +14,19 @@ SocketConnection::SocketConnection(const int client) : Connection() {
 Request SocketConnection::socket_read() {
     RequestParser parser{};
     ssize_t bytes_read = 0, pending = 0;
+    const auto buffer = new char[BUFFER_SIZE];
 
     do {
         const auto remaining = static_cast<int>(parser.remaining_bytes());
         const int buffer_size = std::min(BUFFER_SIZE, remaining);
-        const auto buffer = new char[buffer_size];
 
-        bytes_read += recv(this->client, buffer, sizeof(buffer), 0);
-        pending = recv(this->client, buffer, sizeof(buffer), MSG_PEEK | MSG_DONTWAIT);
+        bytes_read += recv(this->client, buffer, buffer_size, 0);
+        pending = recv(this->client, buffer, buffer_size, MSG_PEEK | MSG_DONTWAIT);
 
         parser.append_content(buffer);
-        delete[] buffer;
     } while (bytes_read > 0 && pending > 0);
 
+    delete[] buffer;
     return parser.request;
 }
 
