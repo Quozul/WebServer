@@ -2,6 +2,7 @@
 #define SOCKETCONNECTION_H
 
 #include "Connection.h"
+#include "../parsers/RequestParser.h"
 
 class SocketConnection : public Connection {
 protected:
@@ -12,7 +13,7 @@ public:
 
     ~SocketConnection() override = default;
 
-    std::string socket_read() override;
+    Request socket_read() override;
 
     void write_socket(const std::string &body) override;
 

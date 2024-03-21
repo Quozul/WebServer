@@ -2,6 +2,7 @@
 #define CONNECTION_H
 
 #include <string>
+#include "../responses/Request.h"
 
 
 class Connection {
@@ -10,7 +11,7 @@ public:
 
     virtual ~Connection() = default;
 
-    virtual std::string socket_read() = 0;
+    virtual Request socket_read() = 0;
 
     virtual void write_socket(const std::string &body) = 0;
 

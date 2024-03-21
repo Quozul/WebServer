@@ -6,10 +6,7 @@
 #include <utility>
 #include <optional>
 
-#include "../string_manipulation.h"
-
 struct Request {
-private:
     std::string protocol;
     std::string method;
     std::string full_url;
@@ -18,25 +15,9 @@ private:
     std::unordered_map<std::string, std::string> headers;
     std::string body;
 
-public:
-    std::optional<std::string> get_header(const std::string &key) const {
-        std::string keyCopy = key;
-        to_lower_case_in_place(keyCopy);
+    std::optional<std::string> get_header(const std::string &key) const;
 
-        if (headers.contains(keyCopy)) {
-            return std::optional{headers.at(keyCopy)};
-        }
-
-        return std::nullopt;
-    }
-
-    std::optional<std::string> get_param(const std::string &key) const {
-        if (params.contains(key)) {
-            return std::optional{params.at(key)};
-        }
-
-        return std::nullopt;
-    }
+    std::optional<std::string> get_param(const std::string &key) const;
 
     std::string get_path() const {
         return path;
@@ -65,8 +46,6 @@ public:
     std::unordered_map<std::string, std::string> get_params() const {
         return params;
     }
-
-    static Request parse(const std::string &request);
 };
 
 std::tuple<std::string, std::string, std::string> get_sections(const std::string &request);

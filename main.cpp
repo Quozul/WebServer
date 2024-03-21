@@ -33,7 +33,7 @@ int main() {
 
         response.set_header("content-type", "text/html");
         response.set_body(
-            "This is a custom web server developed in C++ with the goal to use it on a RISC-V board. Try the other route <a href='/hello'>/hello</a>.");
+            "This is a custom web server developed in C++. Try the other route <a href='/hello'>/hello</a>.");
 
         return response;
     });

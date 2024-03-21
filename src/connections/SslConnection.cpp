@@ -22,16 +22,24 @@ bool SslConnection::handshake() const {
     return true;
 }
 
-std::string SslConnection::socket_read() {
-    std::string final_buffer;
+int get_buffer_size(const size_t remaining) {
+    constexpr size_t default_buffer_size = BUFFER_SIZE;
+    const size_t buffer_size = std::min(default_buffer_size, remaining);
+    const auto res = static_cast<int>(buffer_size);
+    return res;
+}
 
-    do {
-        char buffer[BUFFER_SIZE];
+Request SslConnection::socket_read() {
+    RequestParser parser{};
+    char buffer[BUFFER_SIZE];
 
-        const auto operation = SSL_read(this->ssl, buffer, BUFFER_SIZE);
+    while (!parser.is_complete()) {
+        const auto buffer_size = get_buffer_size(parser.remaining_bytes());
+
+        const auto operation = SSL_read(this->ssl, buffer, buffer_size);
 
         if (operation > 0) {
-            final_buffer.append(buffer, operation);
+            parser.append_content(std::string(buffer, operation));
         }
 
         if (SSL_get_shutdown(this->ssl) > 0) {
@@ -42,9 +50,9 @@ std::string SslConnection::socket_read() {
 
         if (ssl_error == SSL_ERROR_NONE) {
             // TODO: should flush before checking for pending state
-            if (!SSL_has_pending(this->ssl)) {
+            /*if (!SSL_has_pending(this->ssl)) {
                 break;
-            }
+            }*/
         } else if (ssl_error == SSL_ERROR_WANT_READ || ssl_error == SSL_ERROR_WANT_WRITE) {
             const auto value = select(this->client + 1, nullptr, nullptr, nullptr, nullptr);
             tracing::info("select: {}", value);
@@ -60,12 +68,13 @@ std::string SslConnection::socket_read() {
             tracing::error("Unknown error {}", ssl_error);
             throw std::runtime_error("unknown error");
         }
-    } while (true);
+    }
 
-    return final_buffer;
+    return parser.request;
 }
 
 void SslConnection::write_socket(const std::string &body) {
+    // TODO: Send in chunks
     SSL_write(this->ssl, body.c_str(), body.size());
 }
 

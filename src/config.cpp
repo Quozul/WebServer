@@ -2,6 +2,7 @@
 
 #include <fstream>
 
+#include "string_manipulation.h"
 #include "responses/Request.h"
 
 

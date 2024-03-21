@@ -4,6 +4,7 @@
 #include <openssl/ssl.h>
 
 #include "SocketConnection.h"
+#include "../parsers/RequestParser.h"
 
 
 class SslConnection final : public SocketConnection {
@@ -16,7 +17,7 @@ public:
 
     [[nodiscard]] bool handshake() const;
 
-    std::string socket_read() override;
+    Request socket_read() override;
 
     void write_socket(const std::string &body) override;
 
