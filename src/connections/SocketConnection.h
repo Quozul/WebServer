@@ -6,9 +6,10 @@
 class SocketConnection : public Connection {
   protected:
     int client;
+    bool client_open;
 
   public:
-    explicit SocketConnection(int client);
+    explicit SocketConnection(int new_client);
 
     ~SocketConnection() override = default;
 
@@ -17,6 +18,8 @@ class SocketConnection : public Connection {
     void write_socket(const std::string &body) override;
 
     void close_socket() override;
+
+    bool is_open() override;
 };
 
 #endif

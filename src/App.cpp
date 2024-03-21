@@ -99,18 +99,20 @@ void App::handle_client(const int &client) const {
 }
 
 void App::accept_connection(Connection &connection) const {
-    while (true) {
+    while (connection.is_open()) {
         try {
             const auto request = connection.socket_read();
-            Response response = handle_request(request);
+            Response response{};
+
+            try {
+                handle_request(request, response);
+            } catch (UndefinedRoute &e) {
+                response.set_status_code(404);
+            }
 
             spdlog::info("\"{} {}\" {}", request.get_method(), request.get_url().get_full_url(),
                          response.get_status_message());
 
-            connection.write_socket(response.build());
-        } catch (UndefinedRoute &e) {
-            auto response = Response{};
-            response.set_status_code(404);
             connection.write_socket(response.build());
         } catch (const std::runtime_error &e) {
             break;
@@ -131,12 +133,14 @@ void App::close_socket() const {
 
 void App::route(const std::string &path, const Handler &callback) { this->routes[path] = callback; }
 
-Response App::handle_request(const Request &request) const {
-    if (const auto path = request.get_url().get_path(); this->routes.contains(path)) {
-        return this->routes.at(path)(request);
+void App::handle_request(const Request &request, Response &response) const {
+    const auto path = request.get_url().get_path();
+
+    if (!this->routes.contains(path)) {
+        throw UndefinedRoute{};
     }
 
-    throw UndefinedRoute{};
+    this->routes.at(path)(request, response);
 }
 
 App &App::enable_ssl(const std::string &cert, const std::string &key) {

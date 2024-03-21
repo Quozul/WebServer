@@ -11,7 +11,7 @@
 #include "responses/Request.h"
 #include "responses/Response.h"
 
-typedef std::function<Response(const Request &)> Handler;
+typedef std::function<void(const Request &, Response &)> Handler;
 
 class App final {
     int sockfd{};
@@ -37,10 +37,8 @@ class App final {
 
     /**
      * @throws UndefinedRoute
-     * @param request
-     * @return
      */
-    Response handle_request(const Request &request) const;
+    void handle_request(const Request &request, Response &response) const;
 
     App &enable_ssl(const std::string &cert, const std::string &key);
 

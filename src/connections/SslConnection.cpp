@@ -26,7 +26,7 @@ Request SslConnection::socket_read() {
     RequestParser parser{};
     const auto buffer = new char[BUFFER_SIZE];
 
-    while (!parser.has_more()) {
+    while (parser.has_more()) {
         const auto buffer_size = get_buffer_size(parser.remaining_bytes());
 
         const auto operation = SSL_read(this->ssl, buffer, buffer_size);

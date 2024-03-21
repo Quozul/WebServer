@@ -17,6 +17,8 @@ class Connection {
     virtual void write_socket(const std::string &body) = 0;
 
     virtual void close_socket() = 0;
+
+    virtual bool is_open() = 0;
 };
 
 int get_buffer_size(size_t remaining);
