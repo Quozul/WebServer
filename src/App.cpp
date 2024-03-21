@@ -2,18 +2,17 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <unistd.h>
-#include <future>
-#include <vector>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <fcntl.h>
+#include <future>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <vector>
 
-#include "tracing.h"
 #include "connections/SocketConnection.h"
 #include "connections/SslConnection.h"
-
+#include "tracing.h"
 
 int create_socket(const int port) {
     sockaddr_in addr{};
@@ -47,16 +46,14 @@ int create_socket(const int port) {
     return sockfd;
 }
 
-bool App::is_ssl_enabled() const {
-    return this->ssl_ctx != nullptr;
-}
+bool App::is_ssl_enabled() const { return this->ssl_ctx != nullptr; }
 
 void App::run(const int port) {
     this->sockfd = create_socket(port);
 
     tracing::info("Server listening on port {}.", port);
 
-    std::vector<std::future<void> > pending_futures;
+    std::vector<std::future<void>> pending_futures;
 
     fd_set read_set;
     FD_ZERO(&read_set);
@@ -69,18 +66,22 @@ void App::run(const int port) {
         select(sockfd + 1, &read_set, nullptr, nullptr, nullptr);
 
         if (FD_ISSET(sockfd, &read_set)) {
-            const int client = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
+            const int client = accept(
+                sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
             if (client < 0) {
                 tracing::warn("Unable to accept");
                 break;
             }
 
-            auto new_future = std::async(std::launch::async, &App::handle_client, this, std::ref(client));
+            auto new_future =
+                std::async(std::launch::async, &App::handle_client, this,
+                           std::ref(client));
             pending_futures.push_back(std::move(new_future));
         }
 
         std::erase_if(pending_futures, [](const auto &future) {
-            return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+            return future.wait_for(std::chrono::seconds(0)) ==
+                   std::future_status::ready;
         });
     }
 }
@@ -106,7 +107,8 @@ void App::accept_connection(Connection &connection) const {
         try {
             const auto request = connection.socket_read();
 
-            tracing::info("{} {}", request.get_method(), request.get_url().get_full_url());
+            tracing::info("{} {}", request.get_method(),
+                          request.get_url().get_full_url());
 
             Response response = handle_request(request);
             connection.write_socket(response.build());
@@ -137,7 +139,8 @@ void App::route(const std::string &path, const Handler &callback) {
 }
 
 Response App::handle_request(const Request &request) const {
-    if (const auto path = request.get_url().get_path(); this->routes.contains(path)) {
+    if (const auto path = request.get_url().get_path();
+        this->routes.contains(path)) {
         return this->routes.at(path)(request);
     }
 

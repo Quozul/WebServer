@@ -1,13 +1,10 @@
 #include "RequestParser.h"
 
-#include <iostream>
-#include <regex>
 #include "../string_manipulation.h"
-#include "../tracing.h"
+#include <regex>
 
 #define CRLF "\r\n"
 #define CRLF_CRLF "\r\n\r\n"
-
 
 void RequestParser::append_content(const std::string &content) {
     has_already_appended_content = true;
@@ -65,9 +62,7 @@ size_t RequestParser::remaining_bytes() const {
     return remaining_adjusted;
 }
 
-bool RequestParser::is_complete() const {
-    return remaining_bytes() == 0;
-}
+bool RequestParser::is_complete() const { return remaining_bytes() == 0; }
 
 size_t RequestParser::get_content_length() const {
     const auto content_length = request.get_header("content-length");
@@ -78,9 +73,7 @@ size_t RequestParser::get_content_length() const {
     return 0;
 }
 
-bool RequestParser::has_body() const {
-    return get_content_length() != 0;
-}
+bool RequestParser::has_body() const { return get_content_length() != 0; }
 
 void parse_status_line(Request &request, const std::string &status_line) {
     const std::regex word_regex("^([^ ]+) ([^ ]+) (HTTP/[0-9.]{1,3})$");
@@ -92,17 +85,17 @@ void parse_status_line(Request &request, const std::string &status_line) {
         if (const std::smatch &match = *i; match.size() == 4) {
             for (size_t j = 0; j < match.size(); ++j) {
                 switch (j) {
-                    case 1:
-                        request.method = match[j];
-                        break;
-                    case 2:
-                        request.url = Url::parse(match[j]);
-                        break;
-                    case 3:
-                        request.protocol = match[j];
-                        break;
-                    default:
-                        break;
+                case 1:
+                    request.method = match[j];
+                    break;
+                case 2:
+                    request.url = Url::parse(match[j]);
+                    break;
+                case 3:
+                    request.protocol = match[j];
+                    break;
+                default:
+                    break;
                 }
             }
         }

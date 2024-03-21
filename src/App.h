@@ -6,12 +6,12 @@
 #include <functional>
 #include <map>
 
+#include "SslHelpers.h"
 #include "connections/Connection.h"
 #include "responses/Request.h"
 #include "responses/Response.h"
-#include "SslHelpers.h"
 
-typedef std::function<Response (const Request &)> Handler;
+typedef std::function<Response(const Request &)> Handler;
 
 class App final {
     int sockfd{};
@@ -22,7 +22,7 @@ class App final {
 
     [[nodiscard]] bool is_ssl_enabled() const;
 
-public:
+  public:
     App() = default;
 
     void run(int port);
@@ -52,7 +52,6 @@ public:
     }
 };
 
-class UndefinedRoute final : public std::exception {
-};
+class UndefinedRoute final : public std::exception {};
 
 #endif

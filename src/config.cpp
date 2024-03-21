@@ -2,9 +2,8 @@
 
 #include <fstream>
 
-#include "string_manipulation.h"
 #include "responses/Request.h"
-
+#include "string_manipulation.h"
 
 std::optional<std::filesystem::path> look_for_config() {
     const auto current_path = std::filesystem::current_path();
@@ -22,7 +21,8 @@ Config read_config() {
 
     if (const auto config_path = look_for_config(); config_path.has_value()) {
         std::ifstream config_file(config_path.value());
-        auto content = std::string(std::istreambuf_iterator(config_file), std::istreambuf_iterator<char>());
+        auto content = std::string(std::istreambuf_iterator(config_file),
+                                   std::istreambuf_iterator<char>());
         auto parsed_config = parse_key_values(content);
 
         if (parsed_config.contains("cert")) {

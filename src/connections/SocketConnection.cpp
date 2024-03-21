@@ -1,9 +1,9 @@
 #include "SocketConnection.h"
 
+#include "../parsers/RequestParser.h"
 #include <iostream>
-#include <unistd.h>
 #include <sys/socket.h>
-
+#include <unistd.h>
 
 #define BUFFER_SIZE 16'384
 
@@ -21,7 +21,8 @@ Request SocketConnection::socket_read() {
         const int buffer_size = std::min(BUFFER_SIZE, remaining);
 
         bytes_read += recv(this->client, buffer, buffer_size, 0);
-        pending = recv(this->client, buffer, buffer_size, MSG_PEEK | MSG_DONTWAIT);
+        pending =
+            recv(this->client, buffer, buffer_size, MSG_PEEK | MSG_DONTWAIT);
 
         parser.append_content(buffer);
     } while (bytes_read > 0 && pending > 0);
@@ -30,9 +31,7 @@ Request SocketConnection::socket_read() {
     return parser.request;
 }
 
-void SocketConnection::close_socket() {
-    close(this->client);
-}
+void SocketConnection::close_socket() { close(this->client); }
 
 void SocketConnection::write_socket(const std::string &body) {
     write(this->client, body.c_str(), body.size());

@@ -1,14 +1,15 @@
 #include "SslConnection.h"
 
+#include <openssl/err.h>
 #include <stdexcept>
 #include <unistd.h>
-#include <openssl/err.h>
 
+#include "../parsers/RequestParser.h"
 #include "../tracing.h"
 
 #define BUFFER_SIZE 16'384
 
-SslConnection::SslConnection(const int client, SSL_CTX *ctx): SocketConnection(client) {
+SslConnection::SslConnection(const int client, SSL_CTX *ctx) : SocketConnection(client) {
     this->ssl = SSL_new(ctx);
     SSL_set_fd(this->ssl, this->client);
     SSL_set_mode(this->ssl, SSL_MODE_AUTO_RETRY);
@@ -59,10 +60,8 @@ Request SslConnection::socket_read() {
             if (value < 0) {
                 break;
             }
-        } else if (ssl_error == SSL_ERROR_WANT_ASYNC_JOB
-                   || ssl_error == SSL_ERROR_SYSCALL
-                   || ssl_error == SSL_ERROR_SSL
-                   || ssl_error == SSL_ERROR_ZERO_RETURN) {
+        } else if (ssl_error == SSL_ERROR_WANT_ASYNC_JOB || ssl_error == SSL_ERROR_SYSCALL ||
+                   ssl_error == SSL_ERROR_SSL || ssl_error == SSL_ERROR_ZERO_RETURN) {
             throw std::runtime_error("closed connection");
         } else {
             tracing::error("Unknown error {}", ssl_error);

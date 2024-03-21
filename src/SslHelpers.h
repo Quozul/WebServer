@@ -2,7 +2,6 @@
 #define SSL_HELPERS_H
 
 #include <openssl/ssl.h>
-#include <openssl/err.h>
 
 void init_openssl();
 

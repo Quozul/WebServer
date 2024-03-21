@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include "../../src/parsers/Url.h"
+#include <gtest/gtest.h>
 
 TEST(UrlTest, ShouldParseSimpleUrl) {
     // Given

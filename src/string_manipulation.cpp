@@ -3,18 +3,21 @@
 #include <algorithm>
 #include <sstream>
 
-
 std::string &ltrim(std::string &s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-        return !std::isspace(ch) && ch != '\r' && ch != '\n';
-    }));
+                return !std::isspace(ch) && ch != '\r' && ch != '\n';
+            }));
     return s;
 }
 
 std::string &rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-        return !std::isspace(ch) && ch != '\r' && ch != '\n';
-    }).base(), s.end());
+    s.erase(std::find_if(s.rbegin(), s.rend(),
+                         [](unsigned char ch) {
+                             return !std::isspace(ch) && ch != '\r' &&
+                                    ch != '\n';
+                         })
+                .base(),
+            s.end());
     return s;
 }
 
@@ -25,18 +28,19 @@ std::string &trim(std::string &s) {
 }
 
 void to_lower_case_in_place(std::string &string) {
-    std::transform(string.begin(), string.end(), string.begin(), [](const unsigned char character) {
-        return std::tolower(character);
-    });
+    std::transform(
+        string.begin(), string.end(), string.begin(),
+        [](const unsigned char character) { return std::tolower(character); });
 }
 
 void to_upper_case_in_place(std::string &string) {
-    std::transform(string.begin(), string.end(), string.begin(), [](const unsigned char character) {
-        return std::toupper(character);
-    });
+    std::transform(
+        string.begin(), string.end(), string.begin(),
+        [](const unsigned char character) { return std::toupper(character); });
 }
 
-std::unordered_map<std::string, std::string> parse_key_values(std::string &raw_headers) {
+std::unordered_map<std::string, std::string>
+parse_key_values(std::string &raw_headers) {
     std::unordered_map<std::string, std::string> headers;
     std::istringstream iss(raw_headers);
 

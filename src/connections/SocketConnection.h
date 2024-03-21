@@ -2,13 +2,12 @@
 #define SOCKETCONNECTION_H
 
 #include "Connection.h"
-#include "../parsers/RequestParser.h"
 
 class SocketConnection : public Connection {
-protected:
+  protected:
     int client;
 
-public:
+  public:
     explicit SocketConnection(int client);
 
     ~SocketConnection() override = default;
@@ -19,6 +18,5 @@ public:
 
     void close_socket() override;
 };
-
 
 #endif

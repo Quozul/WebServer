@@ -16,12 +16,12 @@ Url Url::parse(const std::string &raw_url) {
 
     const std::string raw_params = raw_url.substr(param_index + 1);
     std::istringstream iss(raw_params);
-    std::string rawParam;
+    std::string raw_param;
 
-    while (std::getline(iss, rawParam, '&')) {
-        const size_t equalIndex = rawParam.find('=');
-        std::string key = rawParam.substr(0, equalIndex);
-        const std::string value = equalIndex == std::string::npos ? "" : rawParam.substr(equalIndex + 1);
+    while (std::getline(iss, raw_param, '&')) {
+        const size_t equal_index = raw_param.find('=');
+        std::string key = raw_param.substr(0, equal_index);
+        const std::string value = equal_index == std::string::npos ? "" : raw_param.substr(equal_index + 1);
         params[key] = value;
     }
 

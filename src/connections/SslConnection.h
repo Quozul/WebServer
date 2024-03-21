@@ -4,13 +4,11 @@
 #include <openssl/ssl.h>
 
 #include "SocketConnection.h"
-#include "../parsers/RequestParser.h"
-
 
 class SslConnection final : public SocketConnection {
     SSL *ssl;
 
-public:
+  public:
     explicit SslConnection(int client, SSL_CTX *ctx);
 
     ~SslConnection() override = default;

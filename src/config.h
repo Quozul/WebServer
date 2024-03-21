@@ -1,8 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include <optional>
 #include <filesystem>
+#include <optional>
 
 struct Config {
     std::optional<std::filesystem::path> cert;

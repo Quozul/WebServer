@@ -1,12 +1,11 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
 
-#include <string>
 #include "../responses/Request.h"
-
+#include <string>
 
 class Connection {
-public:
+  public:
     Connection() = default;
 
     virtual ~Connection() = default;
@@ -17,6 +16,5 @@ public:
 
     virtual void close_socket() = 0;
 };
-
 
 #endif

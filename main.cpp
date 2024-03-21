@@ -1,7 +1,6 @@
-#include <iostream>
-#include <csignal>
 #include <csignal>
 #include <fmt/core.h>
+#include <iostream>
 
 #include "src/App.h"
 #include "src/config.h"
@@ -33,7 +32,8 @@ int main() {
 
         response.set_header("content-type", "text/html");
         response.set_body(
-            "This is a custom web server developed in C++. Try the other route <a href='/hello'>/hello</a>.");
+            "This is a custom web server developed in C++. Try the "
+            "other route <a href='/hello'>/hello</a>.");
 
         return response;
     });
@@ -42,7 +42,8 @@ int main() {
         Response response;
         response.set_header("content-type", "text/html");
 
-        if (const auto name = request.get_url().get_param("name"); name.has_value()) {
+        if (const auto name = request.get_url().get_param("name");
+            name.has_value()) {
             response.set_body("<h1>Hello, " + name.value() + "!</h1>");
         } else {
             response.set_body("<a href='/hello?name=world'>World</a>");
@@ -58,7 +59,7 @@ int main() {
         if (request.get_method() != "POST") {
             response.set_body(R"(
                 <form action="/file" method="post" enctype="multipart/form-data">
-                    <input type="file" name="file" />
+                    <input type="file" name="file" multiple />
                     <input type="submit" value="Upload" />
                 </form>
             )");

@@ -1,10 +1,9 @@
 #ifndef RESPONSEBUILDER_H
 #define RESPONSEBUILDER_H
 
+#include "Response.h"
 #include <map>
 #include <string>
-#include "Response.h"
-
 
 class Response {
     std::string body;
@@ -12,7 +11,7 @@ class Response {
     int response_code = 200;
     static std::map<int, std::string> codes;
 
-public:
+  public:
     Response() = default;
 
     void set_body(const std::string &body);
@@ -23,6 +22,5 @@ public:
 
     std::string build();
 };
-
 
 #endif
