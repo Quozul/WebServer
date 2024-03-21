@@ -11,11 +11,3 @@ std::optional<std::string> Request::get_header(const std::string &key) const {
 
     return std::nullopt;
 }
-
-std::optional<std::string> Request::get_param(const std::string &key) const {
-    if (params.contains(key)) {
-        return std::optional{params.at(key)};
-    }
-
-    return std::nullopt;
-}

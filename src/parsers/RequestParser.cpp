@@ -10,7 +10,7 @@
 
 
 void RequestParser::append_content(const std::string &content) {
-    full_request.append(content);
+    has_already_appended_content = true;
     bool skip = false;
 
     if (state == Status) {
@@ -23,11 +23,10 @@ void RequestParser::append_content(const std::string &content) {
     }
 
     if (state == Headers) {
-        const size_t start_of_body = full_request.find(CRLF_CRLF, parsed_bytes);
-        auto headers = full_request.substr(parsed_bytes, start_of_body);
+        const size_t start_of_body = content.find(CRLF_CRLF, parsed_bytes);
+        auto headers = content.substr(parsed_bytes, start_of_body);
 
         request.headers = parse_key_values(headers);
-
         parsed_bytes = start_of_body + 4;
 
         if (has_body()) {
@@ -43,7 +42,7 @@ void RequestParser::append_content(const std::string &content) {
 }
 
 size_t RequestParser::remaining_bytes() const {
-    if (full_request.empty()) {
+    if (!has_already_appended_content) {
         return -1; // This causes an overflow telling to read as much as possible
     }
 
@@ -97,7 +96,7 @@ void parse_status_line(Request &request, const std::string &status_line) {
                         request.method = match[j];
                         break;
                     case 2:
-                        request.full_url = match[j];
+                        request.url = Url::parse(match[j]);
                         break;
                     case 3:
                         request.protocol = match[j];

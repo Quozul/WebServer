@@ -106,7 +106,7 @@ void App::accept_connection(Connection &connection) const {
         try {
             const auto request = connection.socket_read();
 
-            tracing::info("{} {}", request.get_method(), request.get_full_url());
+            tracing::info("{} {}", request.get_method(), request.get_url().get_full_url());
 
             Response response = handle_request(request);
             connection.write_socket(response.build());
@@ -137,7 +137,7 @@ void App::route(const std::string &path, const Handler &callback) {
 }
 
 Response App::handle_request(const Request &request) const {
-    if (const auto path = request.get_full_url(); this->routes.contains(path)) {
+    if (const auto path = request.get_url().get_path(); this->routes.contains(path)) {
         return this->routes.at(path)(request);
     }
 

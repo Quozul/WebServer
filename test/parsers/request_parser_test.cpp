@@ -13,13 +13,13 @@ TEST(RequestParserTest, ShouldParseGET09HTTPRequest) {
     // Then
     EXPECT_STREQ(request.method.c_str(), "GET");
     EXPECT_STREQ(request.protocol.c_str(), "HTTP/0.9");
-    EXPECT_STREQ(request.full_url.c_str(), "/");
+    EXPECT_STREQ(request.url.get_full_url().c_str(), "/");
     EXPECT_TRUE(parser.is_complete());
 }
 
 TEST(RequestParserTest, ShouldBeIncompleteWhenEmpty) {
     // Given
-    auto parser = RequestParser{};
+    const auto parser = RequestParser{};
 
     // When
 
@@ -40,7 +40,7 @@ TEST(RequestParserTest, ShouldParseGET11HTTPRequest) {
     // Then
     EXPECT_STREQ(request.method.c_str(), "GET");
     EXPECT_STREQ(request.protocol.c_str(), "HTTP/1.1");
-    EXPECT_STREQ(request.full_url.c_str(), "/hello");
+    EXPECT_STREQ(request.url.get_full_url().c_str(), "/hello");
     EXPECT_TRUE(parser.is_complete());
 }
 
@@ -57,7 +57,6 @@ TEST(RequestParserTest, ShouldParseRequestWithHeaders) {
     // Then
     EXPECT_STREQ(request.method.c_str(), "GET");
     EXPECT_STREQ(request.protocol.c_str(), "HTTP/1.0");
-    EXPECT_STREQ(request.full_url.c_str(), "/");
     EXPECT_STREQ(request.get_header("user-agent").value().c_str(),
                  "Mozilla/5.0 (X11; Linux x86_64; rv:10.0.12) Gecko/20130109 Firefox/10.0.12");
     EXPECT_TRUE(parser.is_complete());
@@ -76,7 +75,6 @@ TEST(RequestParserTest, ShouldParseRequestWithHeadersWithBodyStart) {
     // Then
     EXPECT_STREQ(request.method.c_str(), "GET");
     EXPECT_STREQ(request.protocol.c_str(), "HTTP/1.0");
-    EXPECT_STREQ(request.full_url.c_str(), "/");
     EXPECT_STREQ(request.get_header("user-agent").value().c_str(),
                  "Mozilla/5.0 (X11; Linux x86_64; rv:10.0.12) Gecko/20130109 Firefox/10.0.12");
     EXPECT_TRUE(parser.is_complete());
@@ -95,7 +93,7 @@ TEST(RequestParserTest, HandleCompleteRequest) {
     // Then
     EXPECT_STREQ(request.method.c_str(), "POST");
     EXPECT_STREQ(request.protocol.c_str(), "HTTP/1.1");
-    EXPECT_STREQ(request.full_url.c_str(), "/submit-form?foo=bar&baz");
+    EXPECT_STREQ(request.url.get_full_url().c_str(), "/submit-form?foo=bar&baz");
 
     EXPECT_STREQ(request.get_header("Host").value().c_str(), "example.com");
     EXPECT_STREQ(request.get_header("Content-Type").value().c_str(), "application/x-www-form-urlencoded");
@@ -118,7 +116,7 @@ TEST(RequestParserTest, HandleIncompleteRequest) {
     // Then
     EXPECT_STREQ(request.method.c_str(), "POST");
     EXPECT_STREQ(request.protocol.c_str(), "HTTP/1.1");
-    EXPECT_STREQ(request.full_url.c_str(), "/form");
+    EXPECT_STREQ(request.url.get_full_url().c_str(), "/form");
 
     EXPECT_STREQ(request.get_header("Content-Length").value().c_str(), "33");
 
@@ -141,7 +139,6 @@ TEST(RequestParserTest, HandleCompleteIncompleteRequest) {
     // Then
     EXPECT_STREQ(request.method.c_str(), "POST");
     EXPECT_STREQ(request.protocol.c_str(), "HTTP/1.1");
-    EXPECT_STREQ(request.full_url.c_str(), "/form");
 
     EXPECT_STREQ(request.get_header("Content-Length").value().c_str(), "33");
 

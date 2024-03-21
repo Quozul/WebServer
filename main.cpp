@@ -42,7 +42,7 @@ int main() {
         Response response;
         response.set_header("content-type", "text/html");
 
-        if (const auto name = request.get_param("name"); name.has_value()) {
+        if (const auto name = request.get_url().get_param("name"); name.has_value()) {
             response.set_body("<h1>Hello, " + name.value() + "!</h1>");
         } else {
             response.set_body("<a href='/hello?name=world'>World</a>");

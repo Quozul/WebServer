@@ -13,9 +13,9 @@ enum ParsingState {
 
 
 class RequestParser {
-    std::string full_request;
     ParsingState state = Status;
     size_t parsed_bytes = 0;
+    bool has_already_appended_content = false;
 
 public:
     Request request;
