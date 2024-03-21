@@ -5,7 +5,8 @@
 #include <unistd.h>
 
 #include "../parsers/RequestParser.h"
-#include "../tracing.h"
+
+#include <spdlog/spdlog.h>
 
 #define BUFFER_SIZE 16'384
 
@@ -56,7 +57,6 @@ Request SslConnection::socket_read() {
             }*/
         } else if (ssl_error == SSL_ERROR_WANT_READ || ssl_error == SSL_ERROR_WANT_WRITE) {
             const auto value = select(this->client + 1, nullptr, nullptr, nullptr, nullptr);
-            tracing::info("select: {}", value);
             if (value < 0) {
                 break;
             }
@@ -64,7 +64,7 @@ Request SslConnection::socket_read() {
                    ssl_error == SSL_ERROR_SSL || ssl_error == SSL_ERROR_ZERO_RETURN) {
             throw std::runtime_error("closed connection");
         } else {
-            tracing::error("Unknown error {}", ssl_error);
+            spdlog::error("Unknown error {}", ssl_error);
             throw std::runtime_error("unknown error");
         }
     }

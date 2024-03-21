@@ -27,6 +27,7 @@ void RequestParser::append_content(const std::string &content) {
         parsed_bytes = start_of_body + 4;
 
         if (has_body()) {
+            request.body.reserve(get_content_length());
             skip = true;
             state = Body;
         }

@@ -74,8 +74,7 @@ void Response::set_header(const std::string &key, const std::string &value) {
 }
 
 std::string Response::build() {
-    std::string response =
-        "HTTP/1.1 " + std::to_string(this->response_code) + " " + codes[this->response_code] + "\r\n";
+    std::string response = "HTTP/1.1 " + get_status_message() + "\r\n";
 
     this->set_header("content-length", std::to_string(body.length()));
 
@@ -85,6 +84,10 @@ std::string Response::build() {
     response.append("\r\n");
     response.append(this->body);
     return response;
+}
+
+std::string Response::get_status_message() const {
+    return std::to_string(this->response_code) + " " + codes[this->response_code];
 }
 
 void Response::set_status_code(const int &code) { this->response_code = code; }

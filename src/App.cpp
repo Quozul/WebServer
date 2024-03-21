@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <future>
 #include <netinet/in.h>
+#include <spdlog/spdlog.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -12,7 +13,6 @@
 
 #include "connections/SocketConnection.h"
 #include "connections/SslConnection.h"
-#include "tracing.h"
 
 int create_socket(const int port) {
     sockaddr_in addr{};
@@ -23,17 +23,17 @@ int create_socket(const int port) {
 
     const int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        tracing::error("Unable to create socket");
+        spdlog::error("Unable to create socket");
         exit(EXIT_FAILURE);
     }
 
     if (bind(sockfd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0) {
-        tracing::error("Unable to bind");
+        spdlog::error("Unable to bind");
         exit(EXIT_FAILURE);
     }
 
     if (listen(sockfd, 1) < 0) {
-        tracing::error("Unable to listen");
+        spdlog::error("Unable to listen");
         exit(EXIT_FAILURE);
     }
 
@@ -51,7 +51,7 @@ bool App::is_ssl_enabled() const { return this->ssl_ctx != nullptr; }
 void App::run(const int port) {
     this->sockfd = create_socket(port);
 
-    tracing::info("Server listening on port {}.", port);
+    spdlog::info("Server listening on port {}", port);
 
     std::vector<std::future<void>> pending_futures;
 
@@ -66,22 +66,18 @@ void App::run(const int port) {
         select(sockfd + 1, &read_set, nullptr, nullptr, nullptr);
 
         if (FD_ISSET(sockfd, &read_set)) {
-            const int client = accept(
-                sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
+            const int client = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
             if (client < 0) {
-                tracing::warn("Unable to accept");
+                spdlog::warn("Unable to accept");
                 break;
             }
 
-            auto new_future =
-                std::async(std::launch::async, &App::handle_client, this,
-                           std::ref(client));
+            auto new_future = std::async(std::launch::async, &App::handle_client, this, std::ref(client));
             pending_futures.push_back(std::move(new_future));
         }
 
         std::erase_if(pending_futures, [](const auto &future) {
-            return future.wait_for(std::chrono::seconds(0)) ==
-                   std::future_status::ready;
+            return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
         });
     }
 }
@@ -106,11 +102,11 @@ void App::accept_connection(Connection &connection) const {
     while (true) {
         try {
             const auto request = connection.socket_read();
-
-            tracing::info("{} {}", request.get_method(),
-                          request.get_url().get_full_url());
-
             Response response = handle_request(request);
+
+            spdlog::info("\"{} {}\" {}", request.get_method(), request.get_url().get_full_url(),
+                         response.get_status_message());
+
             connection.write_socket(response.build());
         } catch (UndefinedRoute &e) {
             auto response = Response{};
@@ -125,22 +121,18 @@ void App::accept_connection(Connection &connection) const {
 }
 
 void App::close_socket() const {
-    tracing::info("Closing server.");
     close(sockfd);
 
     if (this->ssl_ctx != nullptr) {
         SSL_CTX_free(this->ssl_ctx);
     }
-    tracing::info("Server closed!");
+    spdlog::info("Server closed!");
 }
 
-void App::route(const std::string &path, const Handler &callback) {
-    this->routes[path] = callback;
-}
+void App::route(const std::string &path, const Handler &callback) { this->routes[path] = callback; }
 
 Response App::handle_request(const Request &request) const {
-    if (const auto path = request.get_url().get_path();
-        this->routes.contains(path)) {
+    if (const auto path = request.get_url().get_path(); this->routes.contains(path)) {
         return this->routes.at(path)(request);
     }
 
@@ -151,6 +143,6 @@ App &App::enable_ssl(const std::string &cert, const std::string &key) {
     init_openssl();
     this->ssl_ctx = create_context();
     configure_context(this->ssl_ctx, cert.c_str(), key.c_str());
-    tracing::info("SSL enabled");
+    spdlog::info("SSL is enabled");
     return *this;
 }

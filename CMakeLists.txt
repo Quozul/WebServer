@@ -9,12 +9,12 @@ file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.h")
 add_executable(web_server_reboot main.cpp ${SOURCES})
 
 find_package(OpenSSL REQUIRED)
-find_package(fmt REQUIRED)
-target_link_libraries(web_server_reboot OpenSSL::SSL fmt::fmt)
+find_package(spdlog REQUIRED)
+target_link_libraries(web_server_reboot OpenSSL::SSL spdlog::spdlog)
 
 
 find_package(GTest QUIET)
-if(GTest_FOUND)
+if (GTest_FOUND)
     enable_testing()
 
     file(GLOB_RECURSE SOURCES "test/*_test.cpp" "src/*.cpp" "src/*.h")
@@ -25,11 +25,11 @@ if(GTest_FOUND)
             web_server_reboot_test
             GTest::gtest_main
             OpenSSL::SSL
-            fmt::fmt
+            spdlog::spdlog
     )
 
     include(GoogleTest)
     gtest_discover_tests(web_server_reboot_test)
-else()
+else ()
     message(WARNING "GTest not found. Tests will not be built.")
-endif()
+endif ()

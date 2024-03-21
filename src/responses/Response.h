@@ -21,6 +21,8 @@ class Response {
     void set_status_code(const int &code);
 
     std::string build();
+
+    [[nodiscard]] std::string get_status_message() const;
 };
 
 #endif
