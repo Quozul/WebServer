@@ -23,7 +23,7 @@ class RequestParser {
 
     [[nodiscard]] size_t remaining_bytes() const;
 
-    [[nodiscard]] bool is_complete() const;
+    [[nodiscard]] bool has_more() const;
 
     [[nodiscard]] size_t get_content_length() const;
 

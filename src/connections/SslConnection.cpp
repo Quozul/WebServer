@@ -8,8 +8,6 @@
 
 #include <spdlog/spdlog.h>
 
-#define BUFFER_SIZE 16'384
-
 SslConnection::SslConnection(const int client, SSL_CTX *ctx) : SocketConnection(client) {
     this->ssl = SSL_new(ctx);
     SSL_set_fd(this->ssl, this->client);
@@ -24,18 +22,11 @@ bool SslConnection::handshake() const {
     return true;
 }
 
-int get_buffer_size(const size_t remaining) {
-    constexpr size_t default_buffer_size = BUFFER_SIZE;
-    const size_t buffer_size = std::min(default_buffer_size, remaining);
-    const auto res = static_cast<int>(buffer_size);
-    return res;
-}
-
 Request SslConnection::socket_read() {
     RequestParser parser{};
     const auto buffer = new char[BUFFER_SIZE];
 
-    while (!parser.is_complete()) {
+    while (!parser.has_more()) {
         const auto buffer_size = get_buffer_size(parser.remaining_bytes());
 
         const auto operation = SSL_read(this->ssl, buffer, buffer_size);

@@ -63,7 +63,7 @@ size_t RequestParser::remaining_bytes() const {
     return remaining_adjusted;
 }
 
-bool RequestParser::is_complete() const { return remaining_bytes() == 0; }
+bool RequestParser::has_more() const { return remaining_bytes() != 0; }
 
 size_t RequestParser::get_content_length() const {
     const auto content_length = request.get_header("content-length");

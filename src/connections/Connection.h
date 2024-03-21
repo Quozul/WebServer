@@ -4,6 +4,8 @@
 #include "../responses/Request.h"
 #include <string>
 
+#define BUFFER_SIZE 16'384
+
 class Connection {
   public:
     Connection() = default;
@@ -16,5 +18,7 @@ class Connection {
 
     virtual void close_socket() = 0;
 };
+
+int get_buffer_size(size_t remaining);
 
 #endif

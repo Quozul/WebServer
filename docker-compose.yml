@@ -1,0 +1,9 @@
+services:
+  web:
+    build: .
+    volumes:
+      - "./build/config:/src/app/config"
+      - "./build/key.pem:/src/app/key.pem"
+      - "./build/cert.pem:/src/app/cert.pem"
+    ports:
+      - "8080:8080"
