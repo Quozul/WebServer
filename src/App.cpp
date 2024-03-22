@@ -131,7 +131,10 @@ void App::close_socket() const {
     spdlog::info("Server closed!");
 }
 
-void App::route(const std::string &path, const Handler &callback) { this->routes[path] = callback; }
+App &App::route(const std::string &path, const Handler &handler) {
+    this->routes[path] = handler;
+    return *this;
+}
 
 void App::handle_request(const Request &request, Response &response) const {
     const auto path = request.get_url().get_path();

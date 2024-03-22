@@ -33,7 +33,7 @@ class App final {
 
     void close_socket() const;
 
-    void route(const std::string &path, const Handler &callback);
+    App &route(const std::string &path, const Handler &handler);
 
     /**
      * @throws UndefinedRoute

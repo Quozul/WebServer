@@ -16,56 +16,55 @@ void signal_handler(int) {
     }
 }
 
+void index_handler([[maybe_unused]] const Request &request, Response &response) {
+    response.set_header("content-type", "text/html");
+    response.set_body(R"(
+        This is a custom web server developed in C++.
+        Try the other route <a href='/hello'>/hello</a>.
+    )");
+}
+
+void hello_handler(const Request &request, Response &response) {
+    response.set_header("content-type", "text/html");
+
+    if (const auto name = request.get_url().get_param("name"); name.has_value()) {
+        response.set_body("<h1>Hello, " + name.value() + "!</h1>");
+    } else {
+        response.set_body("<a href='/hello?name=world'>World</a>");
+    }
+}
+
+void file_handler(const Request &request, Response &response) {
+    response.set_header("content-type", "text/html");
+
+    if (request.get_method() != "POST") {
+        response.set_body(R"(
+            <form action="/file" method="post" enctype="multipart/form-data">
+                <input type="file" name="file" multiple />
+                <input type="submit" value="Upload" />
+            </form>
+        )");
+    } else {
+        const auto body = request.get_body();
+        response.set_body(fmt::format("File size: {}", body.size()));
+    }
+}
+
 int main() {
     App app;
     g_app = &app;
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
     std::signal(SIGABRT, signal_handler);
-
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
 
     const auto [cert, key, port] = read_config();
-
-    app.route("/", []([[maybe_unused]] const Request &request, Response &response) {
-        response.set_header("content-type", "text/html");
-        response.set_body(R"(
-            This is a custom web server developed in C++.
-            Try the other route <a href='/hello'>/hello</a>.
-        )");
-    });
-
-    app.route("/hello", [](const Request &request, Response &response) {
-        response.set_header("content-type", "text/html");
-
-        if (const auto name = request.get_url().get_param("name"); name.has_value()) {
-            response.set_body("<h1>Hello, " + name.value() + "!</h1>");
-        } else {
-            response.set_body("<a href='/hello?name=world'>World</a>");
-        }
-    });
-
-    app.route("/file", [](const Request &request, Response &response) {
-        response.set_header("content-type", "text/html");
-
-        if (request.get_method() != "POST") {
-            response.set_body(R"(
-                <form action="/file" method="post" enctype="multipart/form-data">
-                    <input type="file" name="file" multiple />
-                    <input type="submit" value="Upload" />
-                </form>
-            )");
-        } else {
-            const auto body = request.get_body();
-            response.set_body(fmt::format("File size: {}", body.size()));
-        }
-    });
 
     if (cert.has_value() && key.has_value()) {
         app.enable_ssl(cert.value(), key.value());
     }
 
-    app.run(port);
+    app.route("/", index_handler).route("/hello", hello_handler).route("/file", file_handler).run(port);
 
     return 0;
 }
