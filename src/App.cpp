@@ -28,7 +28,7 @@ int create_socket(const int port) {
     }
 
     if (bind(sockfd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0) {
-        spdlog::error("Unable to bind");
+        spdlog::error("Unable to bind port {}", addr.sin_port);
         exit(EXIT_FAILURE);
     }
 
@@ -53,7 +53,7 @@ void App::run(const int port) {
 
     spdlog::info("Server listening on port {}", port);
 
-    std::vector<std::future<void>> pending_futures;
+    // std::vector<std::future<void>> pending_futures;
 
     fd_set read_set;
     FD_ZERO(&read_set);
@@ -72,13 +72,14 @@ void App::run(const int port) {
                 break;
             }
 
-            auto new_future = std::async(std::launch::async, &App::handle_client, this, std::ref(client));
-            pending_futures.push_back(std::move(new_future));
+            handle_client(client);
+            // auto new_future = std::async(std::launch::async, &App::handle_client, this, std::ref(client));
+            // pending_futures.push_back(std::move(new_future));
         }
 
-        std::erase_if(pending_futures, [](const auto &future) {
+        /*std::erase_if(pending_futures, [](const auto &future) {
             return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-        });
+        });*/
     }
 }
 

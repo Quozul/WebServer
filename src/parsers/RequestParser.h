@@ -14,6 +14,7 @@ enum ParsingState {
 class RequestParser {
     ParsingState state = Status;
     size_t parsed_bytes = 0;
+    size_t expected_body_size = 0;
     bool has_already_appended_content = false;
 
   public:

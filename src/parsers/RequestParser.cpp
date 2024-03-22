@@ -1,7 +1,10 @@
 #include "RequestParser.h"
 
 #include "../string_manipulation.h"
+
+#include <iostream>
 #include <regex>
+#include <spdlog/spdlog.h>
 
 #define CRLF "\r\n"
 #define CRLF_CRLF "\r\n\r\n"
@@ -25,9 +28,10 @@ void RequestParser::append_content(const std::string &content) {
 
         request.headers = parse_key_values(headers);
         parsed_bytes = start_of_body + 4;
+        expected_body_size = get_content_length();
 
         if (has_body()) {
-            request.body.reserve(get_content_length());
+            request.body.reserve(expected_body_size);
             skip = true;
             state = Body;
         }
@@ -35,7 +39,7 @@ void RequestParser::append_content(const std::string &content) {
 
     if (state == Body) {
         const auto body = skip ? content.substr(parsed_bytes) : content;
-        request.body.append(body);
+        request.body.append(body); // TODO: Optimize this
     }
 }
 
@@ -44,19 +48,17 @@ size_t RequestParser::remaining_bytes() const {
         return -1; // This causes an overflow telling to read as much as possible
     }
 
-    const size_t content_length = get_content_length();
-
-    if (content_length == 0) {
+    if (expected_body_size == 0) {
         return 0;
     }
 
     const size_t body_size = request.body.size();
 
-    if (body_size >= content_length) {
+    if (body_size >= expected_body_size) {
         return 0;
     }
 
-    const size_t remaining = content_length - body_size;
+    const size_t remaining = expected_body_size - body_size;
     constexpr size_t zero = 0;
     const size_t remaining_adjusted = std::max(zero, remaining);
 
@@ -74,31 +76,26 @@ size_t RequestParser::get_content_length() const {
     return 0;
 }
 
-bool RequestParser::has_body() const { return get_content_length() != 0; }
+bool RequestParser::has_body() const { return expected_body_size != 0; }
 
 void parse_status_line(Request &request, const std::string &status_line) {
-    const std::regex word_regex("^([^ ]+) ([^ ]+) (HTTP/[0-9.]{1,3})$");
+    size_t j = 0, prev = 0;
 
-    const auto words_begin = std::sregex_iterator(status_line.begin(), status_line.end(), word_regex);
-    const auto words_end = std::sregex_iterator();
-
-    for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
-        if (const std::smatch &match = *i; match.size() == 4) {
-            for (size_t j = 0; j < match.size(); ++j) {
-                switch (j) {
-                case 1:
-                    request.method = match[j];
-                    break;
-                case 2:
-                    request.url = Url::parse(match[j]);
-                    break;
-                case 3:
-                    request.protocol = match[j];
-                    break;
-                default:
-                    break;
-                }
-            }
+    while (j++ < 4) {
+        const size_t i = status_line.find(' ', prev);
+        const auto match = status_line.substr(prev, i - prev);
+        switch (j) {
+        case 1:
+            request.method = match;
+            break;
+        case 2:
+            request.url = Url::parse(match);
+            break;
+        case 3:
+            request.protocol = match;
+        default:
+            break;
         }
+        prev = i + 1;
     }
 }
