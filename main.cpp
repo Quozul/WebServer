@@ -24,6 +24,16 @@ void index_handler([[maybe_unused]] const Request &request, Response &response) 
     )");
 }
 
+void not_found_handler(const Request &request, Response &response) {
+    response.set_header("content-type", "text/html");
+    response.set_body(fmt::format(
+        R"(
+            The page "{}" you have requestes does not exists.
+            <a href='/'>Go to home</a>.
+        )",
+        request.url.get_path()));
+}
+
 void hello_handler(const Request &request, Response &response) {
     response.set_header("content-type", "text/html");
 
@@ -51,7 +61,13 @@ void file_handler(const Request &request, Response &response) {
 }
 
 int main() {
-    App app;
+    const auto router = Router()
+                            .route("/", index_handler)
+                            .route("/hello", hello_handler)
+                            .route("/file", file_handler)
+                            .not_found(not_found_handler);
+
+    App app(router);
     g_app = &app;
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
@@ -64,7 +80,7 @@ int main() {
         app.enable_ssl(cert.value(), key.value());
     }
 
-    app.route("/", index_handler).route("/hello", hello_handler).route("/file", file_handler).run(port);
+    app.run(port);
 
     return 0;
 }

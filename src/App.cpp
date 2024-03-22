@@ -46,10 +46,10 @@ int create_socket(const int port) {
     return sockfd;
 }
 
-bool App::is_ssl_enabled() const { return this->ssl_ctx != nullptr; }
+bool App::is_ssl_enabled() const { return ssl_ctx != nullptr; }
 
 void App::run(const int port) {
-    this->sockfd = create_socket(port);
+    sockfd = create_socket(port);
 
     spdlog::info("Server listening on port {}", port);
 
@@ -59,7 +59,7 @@ void App::run(const int port) {
     FD_ZERO(&read_set);
     FD_SET(sockfd, &read_set);
 
-    while (this->is_running) {
+    while (is_running) {
         sockaddr_in addr{};
         uint len = sizeof(addr);
 
@@ -83,18 +83,18 @@ void App::run(const int port) {
 }
 
 void App::handle_client(const int &client) const {
-    if (this->is_ssl_enabled()) {
-        SslConnection connection(client, this->ssl_ctx);
+    if (is_ssl_enabled()) {
+        SslConnection connection(client, ssl_ctx);
 
         if (!connection.handshake()) {
             connection.close_socket();
             return;
         }
 
-        this->accept_connection(connection);
+        accept_connection(connection);
     } else {
         SocketConnection connection(client);
-        this->accept_connection(connection);
+        accept_connection(connection);
     }
 }
 
@@ -104,11 +104,7 @@ void App::accept_connection(Connection &connection) const {
             const auto request = connection.socket_read();
             Response response{};
 
-            try {
-                handle_request(request, response);
-            } catch (UndefinedRoute &e) {
-                response.set_status_code(404);
-            }
+            router.handle_request(request, response);
 
             spdlog::info("\"{} {}\" {}", request.get_method(), request.get_url().get_full_url(),
                          response.get_status_message());
@@ -125,31 +121,16 @@ void App::accept_connection(Connection &connection) const {
 void App::close_socket() const {
     close(sockfd);
 
-    if (this->ssl_ctx != nullptr) {
-        SSL_CTX_free(this->ssl_ctx);
+    if (ssl_ctx != nullptr) {
+        SSL_CTX_free(ssl_ctx);
     }
     spdlog::info("Server closed!");
 }
 
-App &App::route(const std::string &path, const Handler &handler) {
-    this->routes[path] = handler;
-    return *this;
-}
-
-void App::handle_request(const Request &request, Response &response) const {
-    const auto path = request.get_url().get_path();
-
-    if (!this->routes.contains(path)) {
-        throw UndefinedRoute{};
-    }
-
-    this->routes.at(path)(request, response);
-}
-
 App &App::enable_ssl(const std::string &cert, const std::string &key) {
     init_openssl();
-    this->ssl_ctx = create_context();
-    configure_context(this->ssl_ctx, cert.c_str(), key.c_str());
+    ssl_ctx = create_context();
+    configure_context(ssl_ctx, cert.c_str(), key.c_str());
     spdlog::info("SSL is enabled");
     return *this;
 }

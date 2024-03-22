@@ -3,10 +3,10 @@ name: CMake Build and Test
 on:
   push:
     branches:
-      - reboot
+      - master
   pull_request:
     branches:
-      - reboot
+      - master
 
 jobs:
   build:

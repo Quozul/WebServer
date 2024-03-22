@@ -3,19 +3,14 @@
 
 #include <filesystem>
 #include <fstream>
-#include <functional>
-#include <map>
 
+#include "Router.h"
 #include "SslHelpers.h"
 #include "connections/Connection.h"
-#include "responses/Request.h"
-#include "responses/Response.h"
-
-typedef std::function<void(const Request &, Response &)> Handler;
 
 class App final {
+    const Router &router;
     int sockfd{};
-    std::map<std::string, Handler> routes;
     SSL_CTX *ssl_ctx = nullptr;
     std::ofstream log_file;
     bool is_running = true;
@@ -23,7 +18,7 @@ class App final {
     [[nodiscard]] bool is_ssl_enabled() const;
 
   public:
-    App() = default;
+    explicit App(const Router &router) : router(router) {}
 
     void run(int port);
 
@@ -32,13 +27,6 @@ class App final {
     void accept_connection(Connection &connection) const;
 
     void close_socket() const;
-
-    App &route(const std::string &path, const Handler &handler);
-
-    /**
-     * @throws UndefinedRoute
-     */
-    void handle_request(const Request &request, Response &response) const;
 
     App &enable_ssl(const std::string &cert, const std::string &key);
 
@@ -49,7 +37,5 @@ class App final {
         close_socket();
     }
 };
-
-class UndefinedRoute final : public std::exception {};
 
 #endif
