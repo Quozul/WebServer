@@ -36,7 +36,12 @@ std::unordered_map<std::string, std::string> parse_key_values(const std::string 
         }
 
         const size_t key_len = equal_pos - line_start;
-        const size_t value_len = line_end - (equal_pos + 1);
+        size_t value_len = line_end - (equal_pos + 1);
+
+        const char *comment_start = std::find(equal_pos + 1, line_end, '#');
+        if (comment_start != line_end) {
+            value_len = comment_start - (equal_pos + 1);
+        }
 
         std::string key(line_start, key_len);
         std::string value(equal_pos + 1, value_len);

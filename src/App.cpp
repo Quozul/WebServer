@@ -138,8 +138,3 @@ App &App::enable_ssl(const std::string &cert, const std::string &key) {
     spdlog::info("SSL is enabled");
     return *this;
 }
-
-App &App::set_access_logs(const bool new_access_logs) {
-    access_logs = new_access_logs;
-    return *this;
-}

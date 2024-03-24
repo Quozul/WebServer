@@ -78,6 +78,19 @@ TEST(ParseKeyValue, ShouldIgnoreCommentedLine) {
     EXPECT_EQ(result.size(), 1);
 }
 
+TEST(ParseKeyValue, ShouldIgnoreComments) {
+    // Given
+    std::string input = "foo: bar\nbaz: qux # this should be ignored";
+
+    // When
+    const auto result = parse_key_values(input);
+
+    // Then
+    EXPECT_STREQ(result.at("foo").c_str(), "bar");
+    EXPECT_STREQ(result.at("baz").c_str(), "qux");
+    EXPECT_EQ(result.size(), 2);
+}
+
 TEST(ParseKeyValue, ShouldIgnoreFirstCommentedLine) {
     // Given
     std::string input = "#foo: bar\nbaz: qux";

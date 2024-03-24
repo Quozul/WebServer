@@ -1,12 +1,12 @@
 #ifndef APP_H
 #define APP_H
 
-#include <filesystem>
-#include <fstream>
-
 #include "Router.h"
 #include "SslHelpers.h"
 #include "connections/Connection.h"
+
+#include <filesystem>
+#include <fstream>
 
 class App final {
     const Router &router;
@@ -30,8 +30,6 @@ class App final {
     void close_socket() const;
 
     App &enable_ssl(const std::string &cert, const std::string &key);
-
-    App &set_access_logs(bool new_access_logs);
 
     ~App() {
         if (this->log_file.is_open()) {

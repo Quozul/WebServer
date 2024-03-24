@@ -1,9 +1,9 @@
 #include "config.h"
 
-#include <fstream>
-
-#include "request/Request.h"
 #include "string_manipulation.h"
+
+#include <fstream>
+#include <spdlog/spdlog.h>
 
 std::optional<std::filesystem::path> look_for_config() {
     const auto current_path = std::filesystem::current_path();
@@ -35,8 +35,30 @@ Config read_config() {
             config.port = std::stoi(parsed_config["port"]);
         }
 
-        if (parsed_config.contains("access_logs")) {
-            config.access_logs = parsed_config["access_logs"] == "true";
+        if (parsed_config.contains("log_level")) {
+            const auto log_level = parsed_config["log_level"];
+
+            if (log_level == "trace") {
+                spdlog::set_level(spdlog::level::level_enum::trace);
+                spdlog::trace("Logging level is set to 'trace'");
+            } else if (log_level == "debug") {
+                spdlog::set_level(spdlog::level::level_enum::debug);
+                spdlog::debug("Logging level is set to 'debug'");
+            } else if (log_level == "warn") {
+                spdlog::set_level(spdlog::level::level_enum::warn);
+                spdlog::warn("Logging level is set to 'warn'");
+            } else if (log_level == "err") {
+                spdlog::set_level(spdlog::level::level_enum::err);
+                spdlog::error("Logging level is set to 'err'");
+            } else if (log_level == "critical") {
+                spdlog::set_level(spdlog::level::level_enum::critical);
+                spdlog::critical("Logging level is set to 'critical'");
+            } else if (log_level == "off") {
+                spdlog::set_level(spdlog::level::level_enum::off);
+            } else {
+                spdlog::set_level(spdlog::level::level_enum::info);
+                spdlog::info("Logging level is set to 'info'");
+            }
         }
     }
 

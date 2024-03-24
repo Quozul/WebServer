@@ -1,12 +1,10 @@
-#include <csignal>
-#include <fmt/core.h>
-#include <iostream>
-
 #include "src/App.h"
 #include "src/config.h"
 #include "src/request/Request.h"
 #include "src/response/Response.h"
 
+#include <csignal>
+#include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
 App *g_app;
@@ -100,13 +98,13 @@ int main() {
     std::signal(SIGABRT, signal_handler);
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
 
-    const auto [cert, key, port, access_logs] = read_config();
+    const auto [cert, key, port] = read_config();
 
     if (cert.has_value() && key.has_value()) {
         app.enable_ssl(cert.value(), key.value());
     }
 
-    app.set_access_logs(access_logs).run(port);
+    app.run(port);
 
     return 0;
 }

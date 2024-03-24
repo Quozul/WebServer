@@ -8,7 +8,6 @@ struct Config {
     std::optional<std::filesystem::path> cert;
     std::optional<std::filesystem::path> key;
     int port = 8080;
-    bool access_logs = true;
 };
 
 std::optional<std::filesystem::path> look_for_config();
