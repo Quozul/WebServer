@@ -1,20 +1,16 @@
 #include "App.h"
+#include "connections/SocketConnection.h"
+#include "connections/SslConnection.h"
 
+#include <arpa/inet.h>
 #include <cstdio>
 #include <cstdlib>
 #include <fcntl.h>
-#include <future>
 #include <netinet/in.h>
 #include <spdlog/spdlog.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <vector>
-
-#include "connections/SocketConnection.h"
-#include "connections/SslConnection.h"
-
-#include <queue>
 
 int create_socket(const int port) {
     sockaddr_in addr{};
@@ -25,17 +21,17 @@ int create_socket(const int port) {
 
     const int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        spdlog::error("Unable to create socket");
+        spdlog::critical("Unable to create socket");
         exit(EXIT_FAILURE);
     }
 
     if (bind(sockfd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0) {
-        spdlog::error("Unable to bind port {}", addr.sin_port);
+        spdlog::critical("Unable to bind port {}", addr.sin_port);
         exit(EXIT_FAILURE);
     }
 
     if (listen(sockfd, 1) < 0) {
-        spdlog::error("Unable to listen");
+        spdlog::critical("Unable to listen");
         exit(EXIT_FAILURE);
     }
 
@@ -53,34 +49,68 @@ bool App::is_ssl_enabled() const { return ssl_ctx != nullptr; }
 void App::run(const int port) {
     sockfd = create_socket(port);
 
-    spdlog::info("Server listening on port {}", port);
+    int max_sd = sockfd;
+    fd_set master_fds, read_fds;
 
-    std::vector<std::future<void>> pending_futures;
+    FD_ZERO(&master_fds);
+    FD_ZERO(&read_fds);
 
-    fd_set read_set;
-    FD_ZERO(&read_set);
-    FD_SET(sockfd, &read_set);
+    FD_SET(sockfd, &master_fds);
+
+    // std::vector<std::unique_ptr<Connection>> connections;
+
+    spdlog::info("Server {} listening on port {}", sockfd, port);
 
     while (is_running) {
-        sockaddr_in addr{};
-        uint len = sizeof(addr);
+        read_fds = master_fds;
 
-        select(sockfd + 1, &read_set, nullptr, nullptr, nullptr);
+        const auto operation = select(max_sd + 1, &read_fds, nullptr, nullptr, nullptr);
+        if (operation < 0) {
+            spdlog::warn("Unable to select");
+            continue;
+        }
 
-        if (FD_ISSET(sockfd, &read_set)) {
+        if (FD_ISSET(sockfd, &read_fds)) {
+            sockaddr_in addr{};
+            uint len = sizeof(addr);
+
             const int client = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
             if (client < 0) {
                 spdlog::warn("Unable to accept");
-                break;
+                continue;
             }
 
-            auto new_future = std::async(std::launch::async, &App::handle_client, this, std::ref(client));
-            pending_futures.push_back(std::move(new_future));
+            spdlog::trace("New client {} connected {}:{}", client, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+
+            FD_SET(client, &master_fds);
+            if (client > max_sd) {
+                max_sd = client;
+            }
         }
 
-        std::erase_if(pending_futures, [](const auto &future) {
-            return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-        });
+        for (int client = 0; client <= max_sd; client++) {
+            if (client != sockfd && FD_ISSET(client, &read_fds)) {
+                char buffer[BUFFER_SIZE];
+                const ssize_t bytes_received = recv(client, buffer, BUFFER_SIZE, 0);
+                spdlog::trace("{} bytes received from client {}", bytes_received, client);
+
+                if (bytes_received <= 0) {
+                    close(client);
+                    FD_CLR(client, &master_fds);
+                    spdlog::trace("Client {} disconnected", client);
+                } else {
+                    std::string response = "HTTP/1.1 200 OK\r\n";
+                    response += "Content-Type: text/plain\r\n";
+                    response += "Content-Length: 13\r\n";
+                    response += "\r\n";
+                    response += "Hello, World!";
+
+                    write(client, response.c_str(), response.size());
+
+                    spdlog::debug("Received data from client {}", client);
+                }
+            }
+        }
     }
 }
 
@@ -101,25 +131,18 @@ void App::handle_client(const int &client) const {
 }
 
 void App::accept_connection(Connection &connection) const {
-    while (connection.is_open()) {
-        try {
-            const auto request = connection.socket_read();
-            Response response{};
+    try {
+        const auto request = connection.socket_read();
+        Response response{};
 
-            router.handle_request(request, response);
+        router.handle_request(request, response);
 
-            if (access_logs) {
-                spdlog::info("\"{} {}\" {}", request.get_method(), request.get_url().get_full_url(),
-                             response.get_status_message());
-            }
+        spdlog::info("\"{} {}\" {}", request.get_method(), request.get_url().get_full_url(),
+                     response.get_status_message());
 
-            connection.write_socket(response.build());
-        } catch (const std::runtime_error &e) {
-            break;
-        }
+        connection.write_socket(response.build());
+    } catch (const std::runtime_error &e) {
     }
-
-    connection.close_socket();
 }
 
 void App::close_socket() const {

@@ -14,7 +14,6 @@ class App final {
     SSL_CTX *ssl_ctx = nullptr;
     std::ofstream log_file;
     bool is_running = true;
-    bool access_logs = true;
 
     [[nodiscard]] bool is_ssl_enabled() const;
 
