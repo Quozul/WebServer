@@ -24,15 +24,15 @@ bool SslConnection::handshake() const {
 
 Request SslConnection::socket_read() {
     RequestParser parser{};
-    const auto buffer = new char[BUFFER_SIZE];
+    const std::unique_ptr<char[]> buffer(new char[BUFFER_SIZE]);
 
     while (parser.has_more()) {
         const auto buffer_size = get_buffer_size(parser.remaining_bytes());
 
-        const auto operation = SSL_read(this->ssl, buffer, buffer_size);
+        const auto operation = SSL_read(this->ssl, buffer.get(), buffer_size);
 
         if (operation > 0) {
-            parser.append_content(std::string(buffer, operation));
+            parser.append_content(std::string(buffer.get(), operation));
         }
 
         if (SSL_get_shutdown(this->ssl) > 0) {
@@ -60,7 +60,6 @@ Request SslConnection::socket_read() {
         }
     }
 
-    delete[] buffer;
     return parser.request;
 }
 
@@ -73,4 +72,5 @@ void SslConnection::close_socket() {
     SSL_shutdown(this->ssl);
     SSL_free(this->ssl);
     close(this->client);
+    client_open = false;
 }

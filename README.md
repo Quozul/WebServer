@@ -22,9 +22,11 @@ The configuration file is optional but can be used to configure the following va
 port: 443
 cert: cert.pem
 key: key.pem
+access_logs: true
 ```
 
 If you want to generate a self-signed certificate, you can use the following command:
+
 ```sh
 openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
 ./build/web_server_reboot

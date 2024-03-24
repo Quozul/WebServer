@@ -2,7 +2,6 @@
 
 #include "../string_manipulation.h"
 
-#include <iostream>
 #include <regex>
 #include <spdlog/spdlog.h>
 

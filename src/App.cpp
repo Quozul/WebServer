@@ -14,6 +14,8 @@
 #include "connections/SocketConnection.h"
 #include "connections/SslConnection.h"
 
+#include <queue>
+
 int create_socket(const int port) {
     sockaddr_in addr{};
 
@@ -53,7 +55,7 @@ void App::run(const int port) {
 
     spdlog::info("Server listening on port {}", port);
 
-    // std::vector<std::future<void>> pending_futures;
+    std::vector<std::future<void>> pending_futures;
 
     fd_set read_set;
     FD_ZERO(&read_set);
@@ -72,14 +74,13 @@ void App::run(const int port) {
                 break;
             }
 
-            handle_client(client);
-            // auto new_future = std::async(std::launch::async, &App::handle_client, this, std::ref(client));
-            // pending_futures.push_back(std::move(new_future));
+            auto new_future = std::async(std::launch::async, &App::handle_client, this, std::ref(client));
+            pending_futures.push_back(std::move(new_future));
         }
 
-        /*std::erase_if(pending_futures, [](const auto &future) {
+        std::erase_if(pending_futures, [](const auto &future) {
             return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-        });*/
+        });
     }
 }
 
@@ -107,8 +108,10 @@ void App::accept_connection(Connection &connection) const {
 
             router.handle_request(request, response);
 
-            spdlog::info("\"{} {}\" {}", request.get_method(), request.get_url().get_full_url(),
-                         response.get_status_message());
+            if (access_logs) {
+                spdlog::info("\"{} {}\" {}", request.get_method(), request.get_url().get_full_url(),
+                             response.get_status_message());
+            }
 
             connection.write_socket(response.build());
         } catch (const std::runtime_error &e) {
@@ -133,5 +136,10 @@ App &App::enable_ssl(const std::string &cert, const std::string &key) {
     ssl_ctx = create_context();
     configure_context(ssl_ctx, cert.c_str(), key.c_str());
     spdlog::info("SSL is enabled");
+    return *this;
+}
+
+App &App::set_access_logs(const bool new_access_logs) {
+    access_logs = new_access_logs;
     return *this;
 }

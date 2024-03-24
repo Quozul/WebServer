@@ -73,7 +73,7 @@ void image_handler(const Request &request, Response &response) {
         )");
     } else {
         const auto content = request.get_body().str();
-        size_t pos = content.find("image/jpeg", 0) + 14;
+        const size_t pos = content.find("image/jpeg", 0) + 14;
 
         if (pos != std::string::npos) {
             const auto sub = content.substr(pos);
@@ -100,13 +100,13 @@ int main() {
     std::signal(SIGABRT, signal_handler);
     std::signal(SIGPIPE, SIG_IGN); // Disable SIGPIPE
 
-    const auto [cert, key, port] = read_config();
+    const auto [cert, key, port, access_logs] = read_config();
 
     if (cert.has_value() && key.has_value()) {
         app.enable_ssl(cert.value(), key.value());
     }
 
-    app.run(port);
+    app.set_access_logs(access_logs).run(port);
 
     return 0;
 }

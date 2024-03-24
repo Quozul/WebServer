@@ -17,12 +17,10 @@ std::optional<std::filesystem::path> look_for_config() {
 
 Config read_config() {
     Config config;
-    config.port = 8080;
 
     if (const auto config_path = look_for_config(); config_path.has_value()) {
         std::ifstream config_file(config_path.value());
-        auto content = std::string(std::istreambuf_iterator(config_file),
-                                   std::istreambuf_iterator<char>());
+        auto content = std::string(std::istreambuf_iterator(config_file), std::istreambuf_iterator<char>());
         auto parsed_config = parse_key_values(content);
 
         if (parsed_config.contains("cert")) {
@@ -35,6 +33,10 @@ Config read_config() {
 
         if (parsed_config.contains("port")) {
             config.port = std::stoi(parsed_config["port"]);
+        }
+
+        if (parsed_config.contains("access_logs")) {
+            config.access_logs = parsed_config["access_logs"] == "true";
         }
     }
 

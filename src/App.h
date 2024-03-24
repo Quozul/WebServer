@@ -14,6 +14,7 @@ class App final {
     SSL_CTX *ssl_ctx = nullptr;
     std::ofstream log_file;
     bool is_running = true;
+    bool access_logs = true;
 
     [[nodiscard]] bool is_ssl_enabled() const;
 
@@ -29,6 +30,8 @@ class App final {
     void close_socket() const;
 
     App &enable_ssl(const std::string &cert, const std::string &key);
+
+    App &set_access_logs(bool new_access_logs);
 
     ~App() {
         if (this->log_file.is_open()) {
