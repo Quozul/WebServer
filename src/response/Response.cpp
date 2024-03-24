@@ -1,6 +1,6 @@
 #include "Response.h"
+#include "../request/Request.h"
 #include "../string_manipulation.h"
-#include "Request.h"
 
 std::map<int, std::string> Response::codes = {{100, "Continue"},
                                               {101, "Switching Protocol"},

@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include "../parsers/Url.h"
+#include "Url.h"
 
 struct Request {
     std::string protocol;
@@ -25,18 +25,13 @@ struct Request {
 
     std::string get_protocol() const { return protocol; }
 
-    std::unordered_map<std::string, std::string> get_headers() const {
-        return headers;
-    }
+    std::unordered_map<std::string, std::string> get_headers() const { return headers; }
 };
 
-std::tuple<std::string, std::string, std::string>
-get_sections(const std::string &request);
+std::tuple<std::string, std::string, std::string> get_sections(const std::string &request);
 
-std::tuple<std::string, std::string, std::string>
-parse_start_line(const std::string &startLine);
+std::tuple<std::string, std::string, std::string> parse_start_line(const std::string &startLine);
 
-std::tuple<std::string, std::unordered_map<std::string, std::string>>
-parse_url(const std::string &raw_url);
+std::tuple<std::string, std::unordered_map<std::string, std::string>> parse_url(const std::string &raw_url);
 
 #endif

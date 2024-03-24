@@ -1,7 +1,7 @@
 #ifndef CONNECTION_H
 #define CONNECTION_H
 
-#include "../responses/Request.h"
+#include "../request/Request.h"
 #include <string>
 
 #define BUFFER_SIZE 16'384

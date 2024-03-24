@@ -4,8 +4,8 @@
 
 #include "src/App.h"
 #include "src/config.h"
-#include "src/responses/Request.h"
-#include "src/responses/Response.h"
+#include "src/request/Request.h"
+#include "src/response/Response.h"
 
 App *g_app;
 

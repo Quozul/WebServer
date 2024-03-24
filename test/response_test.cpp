@@ -1,4 +1,4 @@
-#include "../src/responses/Response.h"
+#include "../src/response/Response.h"
 #include <gtest/gtest.h>
 
 TEST(ResponseTest, CompleteTest) {

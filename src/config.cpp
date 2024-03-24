@@ -2,7 +2,7 @@
 
 #include <fstream>
 
-#include "responses/Request.h"
+#include "request/Request.h"
 #include "string_manipulation.h"
 
 std::optional<std::filesystem::path> look_for_config() {

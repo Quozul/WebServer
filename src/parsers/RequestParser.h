@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "../responses/Request.h"
+#include "../request/Request.h"
 
 enum ParsingState {
     Status,

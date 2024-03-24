@@ -4,8 +4,8 @@
 #include <functional>
 #include <map>
 
-#include "responses/Request.h"
-#include "responses/Response.h"
+#include "request/Request.h"
+#include "response/Response.h"
 
 typedef std::function<void(const Request &, Response &)> Handler;
 
