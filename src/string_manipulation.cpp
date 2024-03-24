@@ -1,21 +1,13 @@
 #include "string_manipulation.h"
 
 #include <algorithm>
+#include <iostream>
+#include <spdlog/fmt/fmt.h>
 #include <sstream>
 
-std::string &ltrim(std::string &s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-                                    [](unsigned char ch) { return !std::isspace(ch) && ch != '\r' && ch != '\n'; }));
-    return s;
-}
+std::string &ltrim(std::string &value) { return value.erase(0, value.find_first_not_of(" \t\r\n")); }
 
-std::string &rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(),
-                         [](unsigned char ch) { return !std::isspace(ch) && ch != '\r' && ch != '\n'; })
-                .base(),
-            s.end());
-    return s;
-}
+std::string &rtrim(std::string &value) { return value.erase(value.find_last_not_of(" \t\r\n") + 1); }
 
 std::string &trim(std::string &s) {
     rtrim(s);
@@ -28,30 +20,34 @@ void to_lower_case_in_place(std::string &string) {
                    [](const unsigned char character) { return std::tolower(character); });
 }
 
-void to_upper_case_in_place(std::string &string) {
-    std::transform(string.begin(), string.end(), string.begin(),
-                   [](const unsigned char character) { return std::toupper(character); });
-}
-
-std::unordered_map<std::string, std::string> parse_key_values(std::string &line) {
+std::unordered_map<std::string, std::string> parse_key_values(const std::string &raw_lines) {
     std::unordered_map<std::string, std::string> headers;
-    std::istringstream iss(line);
+    const char *start = raw_lines.c_str();
+    const char *end = start + raw_lines.length();
+    const char *line_start = start;
 
-    while (std::getline(iss, line, '\n')) {
-        if (line.starts_with("#")) {
+    while (line_start < end) {
+        const char *line_end = std::find(line_start, end, '\n');
+
+        const char *equal_pos;
+        if (*line_start == '#' || (equal_pos = std::find(line_start, line_end, ':')) == line_end) {
+            line_start = line_end + 1;
             continue;
         }
 
-        const size_t equal_index = line.find(':');
-        if (equal_index == std::string::npos) {
-            continue;
-        }
-        std::string key = line.substr(0, equal_index);
-        std::string value = line.substr(equal_index + 1);
-        trim(value);
+        const size_t key_len = equal_pos - line_start;
+        const size_t value_len = line_end - (equal_pos + 1);
+
+        std::string key(line_start, key_len);
+        std::string value(equal_pos + 1, value_len);
+
         trim(key);
+        trim(value);
         to_lower_case_in_place(key);
-        headers[key] = value;
+
+        headers.emplace(key, value);
+
+        line_start = line_end + 1;
     }
 
     return headers;
