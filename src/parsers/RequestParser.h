@@ -33,4 +33,4 @@ class RequestParser {
 
 void parse_status_line(Request &request, const std::string &status_line);
 
-#endif // REQUESTPARSER_H
+#endif

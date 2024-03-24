@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "Body.h"
 #include "Url.h"
 
 struct Request {
@@ -13,11 +14,11 @@ struct Request {
     std::string method;
     Url url;
     std::unordered_map<std::string, std::string> headers;
-    std::string body;
+    Body body;
 
     std::optional<std::string> get_header(const std::string &key) const;
 
-    std::string get_body() const { return body; }
+    const Body &get_body() const { return body; }
 
     Url get_url() const { return url; }
 

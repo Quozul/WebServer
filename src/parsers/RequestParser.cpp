@@ -39,7 +39,7 @@ void RequestParser::append_content(const std::string &content) {
 
     if (state == Body) {
         const auto body = skip ? content.substr(parsed_bytes) : content;
-        request.body.append(body); // TODO: Optimize this
+        request.body.append(body.c_str(), body.size());
     }
 }
 

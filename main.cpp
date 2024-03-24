@@ -7,6 +7,8 @@
 #include "src/request/Request.h"
 #include "src/response/Response.h"
 
+#include <spdlog/spdlog.h>
+
 App *g_app;
 
 void signal_handler(int) {
@@ -55,8 +57,31 @@ void file_handler(const Request &request, Response &response) {
             </form>
         )");
     } else {
-        const auto body = request.get_body();
+        const auto &body = request.get_body();
         response.set_body(fmt::format("File size: {}", body.size()));
+    }
+}
+
+void image_handler(const Request &request, Response &response) {
+    if (request.get_method() != "POST") {
+        response.set_header("content-type", "text/html");
+        response.set_body(R"(
+            <form action="/image" method="post" enctype="multipart/form-data">
+                <input type="file" name="file" accept="image/jpg" />
+                <input type="submit" value="Upload" />
+            </form>
+        )");
+    } else {
+        const auto content = request.get_body().str();
+        size_t pos = content.find("image/jpeg", 0) + 14;
+
+        if (pos != std::string::npos) {
+            const auto sub = content.substr(pos);
+            response.set_header("content-type", "image/jpg");
+            response.set_body(sub);
+        } else {
+            response.set_status_code(406);
+        }
     }
 }
 
@@ -65,6 +90,7 @@ int main() {
                             .route("/", index_handler)
                             .route("/hello", hello_handler)
                             .route("/file", file_handler)
+                            .route("/image", image_handler)
                             .not_found(not_found_handler);
 
     App app(router);

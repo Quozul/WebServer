@@ -83,7 +83,7 @@ TEST(RequestParserTest, ShouldParseRequestWithHeadersWithBodyStart) {
     EXPECT_FALSE(parser.has_more());
 }
 
-TEST(RequestParserTest, HandleCompleteRequest) {
+TEST(RequestParserTest, ShouldHandleCompleteRequest) {
     // Given
     const std::string request_string = "POST /submit-form?foo=bar&baz HTTP/1.1\r\nHost: "
                                        "example.com\r\nContent-Type: "
@@ -109,7 +109,7 @@ TEST(RequestParserTest, HandleCompleteRequest) {
     EXPECT_FALSE(parser.has_more());
 }
 
-TEST(RequestParserTest, HandleIncompleteRequest) {
+TEST(RequestParserTest, ShouldHandleIncompleteRequest) {
     // Given
     const std::string request_string = "POST /form HTTP/1.1\r\nContent-Length: 33\r\n\r\nusername=johndoe&pas";
     auto parser = RequestParser{};
@@ -130,7 +130,7 @@ TEST(RequestParserTest, HandleIncompleteRequest) {
     EXPECT_TRUE(parser.has_more());
 }
 
-TEST(RequestParserTest, HandleCompleteIncompleteRequest) {
+TEST(RequestParserTest, ShouldHandleRequestCompletion) {
     // Given
     const std::string first_part = "POST /form HTTP/1.1\r\nContent-Length: 33\r\n\r\nusername=johndoe&pas";
     const std::string second_part = "sword=secret\n";
@@ -146,6 +146,28 @@ TEST(RequestParserTest, HandleCompleteIncompleteRequest) {
     EXPECT_STREQ(request.protocol.c_str(), "HTTP/1.1");
 
     EXPECT_STREQ(request.get_header("Content-Length").value().c_str(), "33");
+
+    EXPECT_STREQ(request.body.c_str(), "username=johndoe&password=secret\n");
+    EXPECT_EQ(parser.remaining_bytes(), 0);
+    EXPECT_FALSE(parser.has_more());
+}
+
+TEST(RequestParserTest, ShouldHandleAppendMoreThanContentLength) {
+    // Given
+    const std::string first_part = "POST /form HTTP/1.1\r\nContent-Length: 10\r\n\r\nusername=johndoe&pas";
+    const std::string second_part = "sword=secret\n";
+    auto parser = RequestParser{};
+
+    // When
+    parser.append_content(first_part);
+    parser.append_content(second_part);
+    const auto request = parser.request;
+
+    // Then
+    EXPECT_STREQ(request.method.c_str(), "POST");
+    EXPECT_STREQ(request.protocol.c_str(), "HTTP/1.1");
+
+    EXPECT_STREQ(request.get_header("Content-Length").value().c_str(), "10");
 
     EXPECT_STREQ(request.body.c_str(), "username=johndoe&password=secret\n");
     EXPECT_EQ(parser.remaining_bytes(), 0);
