@@ -1,4 +1,5 @@
 #include "App.h"
+#include "connections/Client.h"
 #include "connections/SocketConnection.h"
 #include "connections/SslConnection.h"
 
@@ -57,7 +58,7 @@ void App::run(const int port) {
 
     FD_SET(sockfd, &master_fds);
 
-    // std::vector<std::unique_ptr<Connection>> connections;
+    std::map<int, std::unique_ptr<Client>> clients;
 
     spdlog::info("Server {} listening on port {}", sockfd, port);
 
@@ -74,40 +75,39 @@ void App::run(const int port) {
             sockaddr_in addr{};
             uint len = sizeof(addr);
 
-            const int client = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
-            if (client < 0) {
+            const int new_socket = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
+            if (new_socket < 0) {
                 spdlog::warn("Unable to accept");
                 continue;
             }
 
-            spdlog::trace("New client {} connected {}:{}", client, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-
-            FD_SET(client, &master_fds);
-            if (client > max_sd) {
-                max_sd = client;
+            // Set new socket to non blocking
+            if (fcntl(new_socket, F_SETFL, O_NONBLOCK) == -1) {
+                spdlog::warn("Unable to fcntl");
+                continue;
             }
+
+            spdlog::trace("New client {} connected {}:{}", new_socket, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+
+            FD_SET(new_socket, &master_fds);
+            if (new_socket > max_sd) {
+                max_sd = new_socket;
+            }
+
+            // Create the client
+            auto new_client_info = std::make_unique<Client>(new_socket, router);
+            clients[new_socket] = std::move(new_client_info);
         }
 
-        for (int client = 0; client <= max_sd; client++) {
-            if (client != sockfd && FD_ISSET(client, &read_fds)) {
-                char buffer[BUFFER_SIZE];
-                const ssize_t bytes_received = recv(client, buffer, BUFFER_SIZE, 0);
-                spdlog::trace("{} bytes received from client {}", bytes_received, client);
-
-                if (bytes_received <= 0) {
-                    close(client);
-                    FD_CLR(client, &master_fds);
-                    spdlog::trace("Client {} disconnected", client);
-                } else {
-                    std::string response = "HTTP/1.1 200 OK\r\n";
-                    response += "Content-Type: text/plain\r\n";
-                    response += "Content-Length: 13\r\n";
-                    response += "\r\n";
-                    response += "Hello, World!";
-
-                    write(client, response.c_str(), response.size());
-
-                    spdlog::debug("Received data from client {}", client);
+        for (int i = 0; i <= max_sd; i++) {
+            if (i != sockfd && FD_ISSET(i, &read_fds)) {
+                // Retrieve the client
+                if (auto it = clients.find(i); it != clients.end()) {
+                    if (it->second->read() == DISCONNECTED) {
+                        FD_CLR(i, &master_fds);
+                        clients.erase(it);
+                        break;
+                    }
                 }
             }
         }
