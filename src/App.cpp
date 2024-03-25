@@ -48,7 +48,7 @@ int create_socket(const int port) {
 
 bool App::is_ssl_enabled() const { return ssl_ctx != nullptr; }
 
-void App::add_new_client(int new_socket) {
+bool App::add_new_client(int new_socket) {
     if (is_ssl_enabled()) {
         auto new_client_info = std::make_unique<SslClient>(new_socket, router);
         new_client_info->handshake(ssl_ctx);
@@ -57,13 +57,15 @@ void App::add_new_client(int new_socket) {
             new_client_info->close_connection();
             // If the handshake failed, we cannot process the client
             // TODO: Try HTTP instead
-            return;
+            return false; // Handshake failed
         }
         clients[new_socket] = std::move(new_client_info);
     } else {
         auto new_client_info = std::make_unique<SocketClient>(new_socket, router);
         clients[new_socket] = std::move(new_client_info);
     }
+
+    return true;
 }
 
 void App::handle_client() {
@@ -78,15 +80,21 @@ void App::handle_client() {
                     FD_CLR(i, &master_fds);
                     clients.erase(it);
                 }
+            } else {
+                spdlog::warn("Client {} has disappeared", i);
+                FD_CLR(i, &master_fds);
+                clients.erase(it);
             }
         }
     }
 }
 
-bool App::accept_new() {
+void App::accept_new() {
     const auto operation = select(max_sd + 1, &read_fds, nullptr, nullptr, nullptr);
     if (operation < 0) {
-        spdlog::critical("Unable to select, max sd: {}", max_sd);
+        const auto error_message = std::strerror(errno);
+
+        spdlog::critical("select error: ({}) '{}'", operation, error_message);
         exit(EXIT_FAILURE);
     }
 
@@ -97,26 +105,25 @@ bool App::accept_new() {
         const int new_socket = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
         if (new_socket < 0) {
             spdlog::warn("Unable to accept");
-            return false;
+            return;
         }
 
         // Set new socket to non blocking
         if (fcntl(new_socket, F_SETFL, O_NONBLOCK) == -1) {
             spdlog::warn("Unable to fcntl");
-            return false;
+            return;
         }
 
         spdlog::trace("New client {} connected {}:{}", new_socket, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 
-        add_new_client(new_socket);
-        FD_SET(new_socket, &master_fds);
+        if (add_new_client(new_socket)) {
+            FD_SET(new_socket, &master_fds);
 
-        if (new_socket > max_sd) {
-            max_sd = new_socket;
+            if (new_socket > max_sd) {
+                max_sd = new_socket;
+            }
         }
     }
-
-    return true;
 }
 
 void App::run(const int port) {
@@ -132,8 +139,7 @@ void App::run(const int port) {
     while (is_running) {
         read_fds = master_fds;
 
-        if (!accept_new())
-            continue;
+        accept_new();
 
         handle_client();
     }

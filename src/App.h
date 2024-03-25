@@ -20,11 +20,15 @@ class App final {
 
     [[nodiscard]] bool is_ssl_enabled() const;
 
-    void add_new_client(int new_socket);
+    /**
+     * @param new_socket
+     * @return true if the client was added successfully
+     */
+    [[nodiscard]] bool add_new_client(int new_socket);
 
     void handle_client();
 
-    [[nodiscard]] bool accept_new();
+    void accept_new();
 
   public:
     explicit App(const Router &router) : router(router) {}
