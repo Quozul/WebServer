@@ -1,5 +1,6 @@
 #include "SslClient.h"
 
+#include <openssl/err.h>
 #include <spdlog/spdlog.h>
 
 bool SslClient::handshake(SSL_CTX *ctx) {
@@ -38,7 +39,7 @@ unsigned char SslClient::socket_read() {
 
         const std::string response = response_builder.build();
 
-        SSL_write(ssl_, response.c_str(), response.size());
+        socket_write(response.c_str(), response.size());
 
         const RequestParser new_parser{};
         parser_ = new_parser;
@@ -48,15 +49,35 @@ unsigned char SslClient::socket_read() {
 
     if (ssl_error == SSL_ERROR_NONE || ssl_error == SSL_ERROR_WANT_READ || ssl_error == SSL_ERROR_WANT_WRITE) {
         return STILL_HERE;
-    } else if (ssl_error == SSL_ERROR_WANT_ASYNC_JOB || ssl_error == SSL_ERROR_SYSCALL || ssl_error == SSL_ERROR_SSL ||
-               ssl_error == SSL_ERROR_ZERO_RETURN) {
-        return DISCONNECTED;
-    } else {
-        spdlog::error("Unknown error {}", ssl_error);
+    }
+
+    if (ssl_error == SSL_ERROR_WANT_ASYNC_JOB || ssl_error == SSL_ERROR_SYSCALL || ssl_error == SSL_ERROR_SSL ||
+        ssl_error == SSL_ERROR_ZERO_RETURN) {
         return DISCONNECTED;
     }
 
-    return STILL_HERE;
+    spdlog::error("SSL_read error: '{}'", ERR_error_string(SSL_get_error(ssl_, bytes_received), nullptr));
+    return DISCONNECTED;
+}
+
+void SslClient::socket_write(const char *data, const size_t size) {
+    size_t offset = 0;
+
+    while (offset < size) {
+        constexpr size_t chunk_size = BUFFER_SIZE;
+        const size_t bytes_to_send = std::min(chunk_size, size - offset);
+        const int bytes_sent = SSL_write(ssl_, data + offset, bytes_to_send);
+
+        if (bytes_sent <= 0) {
+            const int ssl_error = SSL_get_error(ssl_, bytes_sent);
+            if (ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
+                spdlog::error("SSL_write error: '{}'", ERR_error_string(SSL_get_error(ssl_, bytes_sent), nullptr));
+                break;
+            }
+        } else {
+            offset += bytes_sent;
+        }
+    }
 }
 
 void SslClient::close_connection() {

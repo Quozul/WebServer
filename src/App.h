@@ -3,6 +3,7 @@
 
 #include "Router.h"
 #include "SslHelpers.h"
+#include "clients/Client.h"
 
 #include <filesystem>
 #include <fstream>
@@ -13,8 +14,17 @@ class App final {
     SSL_CTX *ssl_ctx = nullptr;
     std::ofstream log_file;
     bool is_running = true;
+    std::map<int, std::unique_ptr<Client>> clients;
+    int max_sd{};
+    fd_set master_fds{}, read_fds{};
 
     [[nodiscard]] bool is_ssl_enabled() const;
+
+    [[nodiscard]] bool add_new_client(int new_socket);
+
+    void handle_client();
+
+    [[nodiscard]] bool accept_new();
 
   public:
     explicit App(const Router &router) : router(router) {}

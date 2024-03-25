@@ -48,81 +48,95 @@ int create_socket(const int port) {
 
 bool App::is_ssl_enabled() const { return ssl_ctx != nullptr; }
 
-void App::run(const int port) {
-    sockfd = create_socket(port);
+bool App::add_new_client(int new_socket) {
+    if (is_ssl_enabled()) {
+        auto new_client_info = std::make_unique<SslClient>(new_socket, router);
+        if (!new_client_info->handshake(ssl_ctx)) {
+            spdlog::error("Failed to handshake client {}", new_socket);
+            new_client_info->close_connection();
+            return false;
+        }
+        clients[new_socket] = std::move(new_client_info);
+    } else {
+        auto new_client_info = std::make_unique<SocketClient>(new_socket, router);
+        clients[new_socket] = std::move(new_client_info);
+    }
 
-    int max_sd = sockfd;
-    fd_set master_fds, read_fds;
+    return true;
+}
+
+void App::handle_client() {
+    for (int i = 0; i <= max_sd; i++) {
+        if (i != sockfd && FD_ISSET(i, &read_fds)) {
+            // Retrieve the client
+            if (auto it = clients.find(i); it != clients.end()) {
+                if (it->second->socket_read() == DISCONNECTED) {
+                    it->second->close_connection();
+                    FD_CLR(i, &master_fds);
+                    clients.erase(it);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+bool App::accept_new() {
+    const auto operation = select(max_sd + 1, &read_fds, nullptr, nullptr, nullptr);
+    if (operation < 0) {
+        spdlog::warn("Unable to select");
+        return false;
+    }
+
+    if (FD_ISSET(sockfd, &read_fds)) {
+        sockaddr_in addr{};
+        uint len = sizeof(addr);
+
+        const int new_socket = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
+        if (new_socket < 0) {
+            spdlog::warn("Unable to accept");
+            return false;
+        }
+
+        // Set new socket to non blocking
+        if (fcntl(new_socket, F_SETFL, O_NONBLOCK) == -1) {
+            spdlog::warn("Unable to fcntl");
+            return false;
+        }
+
+        spdlog::trace("New client {} connected {}:{}", new_socket, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+
+        // Create the client
+        if (!add_new_client(new_socket)) {
+            return false;
+        }
+
+        FD_SET(new_socket, &master_fds);
+        if (new_socket > max_sd) {
+            max_sd = new_socket;
+        }
+    }
+
+    return true;
+}
+
+void App::run(const int port) {
+    max_sd = sockfd = create_socket(port);
 
     FD_ZERO(&master_fds);
     FD_ZERO(&read_fds);
 
     FD_SET(sockfd, &master_fds);
 
-    std::map<int, std::unique_ptr<Client>> clients;
-
     spdlog::info("Server {} listening on port {}", sockfd, port);
 
     while (is_running) {
         read_fds = master_fds;
 
-        const auto operation = select(max_sd + 1, &read_fds, nullptr, nullptr, nullptr);
-        if (operation < 0) {
-            spdlog::warn("Unable to select");
+        if (!accept_new())
             continue;
-        }
 
-        if (FD_ISSET(sockfd, &read_fds)) {
-            sockaddr_in addr{};
-            uint len = sizeof(addr);
-
-            const int new_socket = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
-            if (new_socket < 0) {
-                spdlog::warn("Unable to accept");
-                continue;
-            }
-
-            // Set new socket to non blocking
-            if (fcntl(new_socket, F_SETFL, O_NONBLOCK) == -1) {
-                spdlog::warn("Unable to fcntl");
-                continue;
-            }
-
-            spdlog::trace("New client {} connected {}:{}", new_socket, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-
-            // Create the client
-            if (is_ssl_enabled()) {
-                auto new_client_info = std::make_unique<SslClient>(new_socket, router);
-                if (!new_client_info->handshake(ssl_ctx)) {
-                    spdlog::warn("Failed to handshake client {}", new_socket);
-                    new_client_info->close_connection();
-                    continue;
-                }
-                clients[new_socket] = std::move(new_client_info);
-            } else {
-                auto new_client_info = std::make_unique<SocketClient>(new_socket, router);
-                clients[new_socket] = std::move(new_client_info);
-            }
-
-            FD_SET(new_socket, &master_fds);
-            if (new_socket > max_sd) {
-                max_sd = new_socket;
-            }
-        }
-
-        for (int i = 0; i <= max_sd; i++) {
-            if (i != sockfd && FD_ISSET(i, &read_fds)) {
-                // Retrieve the client
-                if (auto it = clients.find(i); it != clients.end()) {
-                    if (it->second->socket_read() == DISCONNECTED) {
-                        it->second->close_connection();
-                        FD_CLR(i, &master_fds);
-                        clients.erase(it);
-                        break;
-                    }
-                }
-            }
-        }
+        handle_client();
     }
 }
 

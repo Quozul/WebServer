@@ -15,6 +15,8 @@ class Client {
 
     virtual unsigned char socket_read() = 0;
 
+    virtual void socket_write(const char *data, size_t size) = 0;
+
     virtual void close_connection() = 0;
 };
 

@@ -70,7 +70,7 @@ void Response::set_header(const std::string &key, const std::string &value) {
     std::string lower_key = key;
     to_lower_case_in_place(lower_key);
 
-    this->headers[lower_key] = value;
+    headers.emplace(lower_key, value);
 }
 
 std::string Response::build() {

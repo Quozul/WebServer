@@ -18,6 +18,8 @@ class SocketClient : public Client {
 
     unsigned char socket_read() override;
 
+    void socket_write(const char *data, size_t size) override;
+
     void close_connection() override;
 };
 

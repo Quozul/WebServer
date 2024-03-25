@@ -23,7 +23,7 @@ unsigned char SocketClient::socket_read() {
 
         const std::string response = response_builder.build();
 
-        write(socket_, response.c_str(), response.size());
+        socket_write(response.c_str(), response.size());
 
         const RequestParser new_parser{};
         parser_ = new_parser;
@@ -31,6 +31,8 @@ unsigned char SocketClient::socket_read() {
 
     return STILL_HERE;
 }
+
+void SocketClient::socket_write(const char *data, const size_t size) { write(socket_, data, size); }
 
 void SocketClient::close_connection() {
     spdlog::trace("Client {} disconnected", socket_);
