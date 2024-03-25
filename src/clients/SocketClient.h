@@ -10,17 +10,22 @@ class SocketClient : public Client {
     RequestParser parser_;
     const Router &router_;
     const int socket_;
+    bool is_connected_;
 
   public:
-    explicit SocketClient(const int client, const Router &router) : router_(router), socket_(client) {}
+    explicit SocketClient(const int client, const Router &router) : router_(router), socket_(client) {
+        is_connected_ = true;
+    }
 
     ~SocketClient() override = default;
 
-    unsigned char socket_read() override;
+    void socket_read() override;
 
     void socket_write(const char *data, size_t size) override;
 
     void close_connection() override;
+
+    bool is_active() override;
 };
 
 #endif

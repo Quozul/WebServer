@@ -13,9 +13,9 @@ class SslClient final : public SocketClient {
 
     ~SslClient() override = default;
 
-    bool handshake(SSL_CTX *ctx);
+    void handshake(SSL_CTX *ctx);
 
-    unsigned char socket_read() override;
+    void socket_read() override;
 
     void socket_write(const char *data, size_t size) override;
 

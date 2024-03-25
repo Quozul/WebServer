@@ -13,11 +13,13 @@ class Client {
 
     virtual ~Client() = default;
 
-    virtual unsigned char socket_read() = 0;
+    virtual void socket_read() = 0;
 
     virtual void socket_write(const char *data, size_t size) = 0;
 
     virtual void close_connection() = 0;
+
+    virtual bool is_active() = 0;
 };
 
 int get_buffer_size(size_t remaining);

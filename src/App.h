@@ -20,7 +20,7 @@ class App final {
 
     [[nodiscard]] bool is_ssl_enabled() const;
 
-    [[nodiscard]] bool add_new_client(int new_socket);
+    void add_new_client(int new_socket);
 
     void handle_client();
 

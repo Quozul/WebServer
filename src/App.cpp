@@ -48,21 +48,22 @@ int create_socket(const int port) {
 
 bool App::is_ssl_enabled() const { return ssl_ctx != nullptr; }
 
-bool App::add_new_client(int new_socket) {
+void App::add_new_client(int new_socket) {
     if (is_ssl_enabled()) {
         auto new_client_info = std::make_unique<SslClient>(new_socket, router);
-        if (!new_client_info->handshake(ssl_ctx)) {
+        new_client_info->handshake(ssl_ctx);
+        if (!new_client_info->is_active()) {
             spdlog::error("Failed to handshake client {}", new_socket);
             new_client_info->close_connection();
-            return false;
+            // If the handshake failed, we cannot process the client
+            // TODO: Try HTTP instead
+            return;
         }
         clients[new_socket] = std::move(new_client_info);
     } else {
         auto new_client_info = std::make_unique<SocketClient>(new_socket, router);
         clients[new_socket] = std::move(new_client_info);
     }
-
-    return true;
 }
 
 void App::handle_client() {
@@ -70,11 +71,12 @@ void App::handle_client() {
         if (i != sockfd && FD_ISSET(i, &read_fds)) {
             // Retrieve the client
             if (auto it = clients.find(i); it != clients.end()) {
-                if (it->second->socket_read() == DISCONNECTED) {
+                it->second->socket_read();
+
+                if (!it->second->is_active()) {
                     it->second->close_connection();
                     FD_CLR(i, &master_fds);
                     clients.erase(it);
-                    break;
                 }
             }
         }
@@ -84,8 +86,8 @@ void App::handle_client() {
 bool App::accept_new() {
     const auto operation = select(max_sd + 1, &read_fds, nullptr, nullptr, nullptr);
     if (operation < 0) {
-        spdlog::warn("Unable to select");
-        return false;
+        spdlog::critical("Unable to select, max sd: {}", max_sd);
+        exit(EXIT_FAILURE);
     }
 
     if (FD_ISSET(sockfd, &read_fds)) {
@@ -106,12 +108,9 @@ bool App::accept_new() {
 
         spdlog::trace("New client {} connected {}:{}", new_socket, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 
-        // Create the client
-        if (!add_new_client(new_socket)) {
-            return false;
-        }
-
+        add_new_client(new_socket);
         FD_SET(new_socket, &master_fds);
+
         if (new_socket > max_sd) {
             max_sd = new_socket;
         }

@@ -3,7 +3,7 @@
 #include <openssl/err.h>
 #include <spdlog/spdlog.h>
 
-bool SslClient::handshake(SSL_CTX *ctx) {
+void SslClient::handshake(SSL_CTX *ctx) {
     ssl_ = SSL_new(ctx);
     SSL_set_fd(ssl_, socket_);
     SSL_set_mode(ssl_, SSL_MODE_AUTO_RETRY);
@@ -12,14 +12,15 @@ bool SslClient::handshake(SSL_CTX *ctx) {
     if (handshake_result <= 0) {
         int ssl_error = SSL_get_error(ssl_, handshake_result);
         if (ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
-            return false;
+            is_connected_ = false;
+            return;
         }
     }
 
-    return true;
+    is_connected_ = true;
 }
 
-unsigned char SslClient::socket_read() {
+void SslClient::socket_read() {
     char buffer[BUFFER_SIZE];
 
     auto buffer_size = get_buffer_size(parser_.remaining_bytes());
@@ -30,7 +31,7 @@ unsigned char SslClient::socket_read() {
     }
 
     if (SSL_get_shutdown(ssl_) > 0) {
-        return DISCONNECTED;
+        is_connected_ = false;
     }
 
     if (!parser_.has_more()) {
@@ -48,16 +49,18 @@ unsigned char SslClient::socket_read() {
     const auto ssl_error = SSL_get_error(ssl_, bytes_received);
 
     if (ssl_error == SSL_ERROR_NONE || ssl_error == SSL_ERROR_WANT_READ || ssl_error == SSL_ERROR_WANT_WRITE) {
-        return STILL_HERE;
+        return;
     }
 
     if (ssl_error == SSL_ERROR_WANT_ASYNC_JOB || ssl_error == SSL_ERROR_SYSCALL || ssl_error == SSL_ERROR_SSL ||
         ssl_error == SSL_ERROR_ZERO_RETURN) {
-        return DISCONNECTED;
+        is_connected_ = false;
+        return;
     }
 
-    spdlog::error("SSL_read error: '{}'", ERR_error_string(SSL_get_error(ssl_, bytes_received), nullptr));
-    return DISCONNECTED;
+    spdlog::error("SSL_read error: ({}) '{}'", ssl_error,
+                  ERR_error_string(SSL_get_error(ssl_, bytes_received), nullptr));
+    is_connected_ = false;
 }
 
 void SslClient::socket_write(const char *data, const size_t size) {
@@ -66,12 +69,14 @@ void SslClient::socket_write(const char *data, const size_t size) {
     while (offset < size) {
         constexpr size_t chunk_size = BUFFER_SIZE;
         const size_t bytes_to_send = std::min(chunk_size, size - offset);
-        const int bytes_sent = SSL_write(ssl_, data + offset, bytes_to_send);
+        const int bytes_sent = SSL_write(ssl_, data + offset, static_cast<int>(bytes_to_send));
 
         if (bytes_sent <= 0) {
             const int ssl_error = SSL_get_error(ssl_, bytes_sent);
             if (ssl_error != SSL_ERROR_WANT_READ && ssl_error != SSL_ERROR_WANT_WRITE) {
-                spdlog::error("SSL_write error: '{}'", ERR_error_string(SSL_get_error(ssl_, bytes_sent), nullptr));
+                spdlog::error("SSL_write error: ({}) '{}'", ssl_error,
+                              ERR_error_string(SSL_get_error(ssl_, bytes_sent), nullptr));
+                is_connected_ = false;
                 break;
             }
         } else {
@@ -85,4 +90,5 @@ void SslClient::close_connection() {
     SSL_shutdown(ssl_);
     SSL_free(ssl_);
     close(socket_);
+    is_connected_ = false;
 }

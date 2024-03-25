@@ -3,16 +3,14 @@
 #include <spdlog/spdlog.h>
 #include <sys/socket.h>
 
-unsigned char SocketClient::socket_read() {
+void SocketClient::socket_read() {
     char buffer[BUFFER_SIZE];
 
-    auto buffer_size = get_buffer_size(parser_.remaining_bytes());
+    const auto buffer_size = get_buffer_size(parser_.remaining_bytes());
     const ssize_t bytes_received = recv(socket_, buffer, buffer_size, 0);
 
     if (bytes_received <= 0) {
-        close(socket_);
-        spdlog::trace("Client {} disconnected", socket_);
-        return DISCONNECTED;
+        is_connected_ = false;
     }
 
     parser_.append_content(std::string(buffer, bytes_received));
@@ -28,8 +26,6 @@ unsigned char SocketClient::socket_read() {
         const RequestParser new_parser{};
         parser_ = new_parser;
     }
-
-    return STILL_HERE;
 }
 
 void SocketClient::socket_write(const char *data, const size_t size) { write(socket_, data, size); }
@@ -37,4 +33,7 @@ void SocketClient::socket_write(const char *data, const size_t size) { write(soc
 void SocketClient::close_connection() {
     spdlog::trace("Client {} disconnected", socket_);
     close(socket_);
+    is_connected_ = false;
 }
+
+bool SocketClient::is_active() { return is_connected_; }
