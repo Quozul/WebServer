@@ -3,7 +3,6 @@
 
 #include "Router.h"
 #include "SslHelpers.h"
-#include "connections/Connection.h"
 
 #include <filesystem>
 #include <fstream>
@@ -21,10 +20,6 @@ class App final {
     explicit App(const Router &router) : router(router) {}
 
     void run(int port);
-
-    void handle_client(const int &client) const;
-
-    void accept_connection(Connection &connection) const;
 
     void close_socket() const;
 

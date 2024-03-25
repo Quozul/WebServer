@@ -20,13 +20,13 @@ make -j$(nproc)
 The configuration file is optional but can be used to configure the following values:
 
 ```yaml
-port: 8080 # required, default "8080"
-log_level: info # required, default "info"
+port: 8080 # defaults to "8080"
+log_level: info # defaults to "info"
 cert: cert.pem
 key: key.pem
 ```
 
-If cert or key is not provided, TLS will be disabled.
+All parameters are optional. If cert or key is not provided, TLS will be disabled.
 
 #### Logging level
 

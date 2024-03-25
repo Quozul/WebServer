@@ -1,4 +1,6 @@
-#include "Connection.h"
+#include "Client.h"
+
+#include <algorithm>
 
 int get_buffer_size(const size_t remaining) {
     constexpr size_t default_buffer_size = BUFFER_SIZE;

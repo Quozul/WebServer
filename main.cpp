@@ -20,7 +20,7 @@ void index_handler([[maybe_unused]] const Request &request, Response &response) 
     response.set_header("content-type", "text/html");
     response.set_body(R"(
         This is a custom web server developed in C++.
-        Try the other route <a href='/hello'>/hello</a>.
+        Try the other route <a href='/hello'>/hello</a> or <a href='/file'>file upload</a>.
     )");
 }
 
@@ -47,17 +47,20 @@ void hello_handler(const Request &request, Response &response) {
 void file_handler(const Request &request, Response &response) {
     response.set_header("content-type", "text/html");
 
-    if (request.get_method() != "POST") {
-        response.set_body(R"(
-            <form action="/file" method="post" enctype="multipart/form-data">
-                <input type="file" name="file" multiple />
-                <input type="submit" value="Upload" />
-            </form>
-        )");
-    } else {
+    std::string response_body = R"(
+        <form action="/file" method="post" enctype="multipart/form-data">
+            <input type="file" name="file" multiple />
+            <input type="submit" value="Upload" />
+        </form>
+        The file(s) are not saved. Try <a href='/image'>image upload</a> as well.
+    )";
+
+    if (request.get_method() == "POST") {
         const auto &body = request.get_body();
-        response.set_body(fmt::format("File size: {}", body.size()));
+        response_body.append(fmt::format("Upload size: {} bytes", body.size()));
     }
+
+    response.set_body(response_body);
 }
 
 void image_handler(const Request &request, Response &response) {
@@ -68,6 +71,7 @@ void image_handler(const Request &request, Response &response) {
                 <input type="file" name="file" accept="image/jpg" />
                 <input type="submit" value="Upload" />
             </form>
+            The file(s) are not saved. Try <a href='/file'>file upload</a> as well.
         )");
     } else {
         const auto content = request.get_body().str();

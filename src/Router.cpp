@@ -1,5 +1,7 @@
 #include "Router.h"
 
+#include <spdlog/spdlog.h>
+
 Router &Router::route(const std::string &path, const Handler &handler) {
     this->routes[path] = handler;
     return *this;
@@ -12,6 +14,8 @@ Router &Router::not_found(const Handler &handler) {
 
 void Router::handle_request(const Request &request, Response &response) const {
     const auto path = request.get_url().get_path();
+
+    spdlog::info("\"{} {}\" {}", request.get_method(), request.get_url().get_full_url(), response.get_status_message());
 
     if (!this->routes.contains(path)) {
         response.set_status_code(404);

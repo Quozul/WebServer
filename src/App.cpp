@@ -1,7 +1,7 @@
 #include "App.h"
-#include "connections/Client.h"
-#include "connections/SocketConnection.h"
-#include "connections/SslConnection.h"
+
+#include "clients/SocketClient.h"
+#include "clients/SslClient.h"
 
 #include <arpa/inet.h>
 #include <cstdio>
@@ -36,11 +36,12 @@ int create_socket(const int port) {
         exit(EXIT_FAILURE);
     }
 
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, nullptr, 0);
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, nullptr, 0);
-    setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, nullptr, 0);
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT | SO_KEEPALIVE, nullptr, 0);
 
-    fcntl(sockfd, F_SETFL, O_NONBLOCK);
+    if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1) {
+        spdlog::critical("Unable to set socket to non blocking");
+        exit(EXIT_FAILURE);
+    }
 
     return sockfd;
 }
@@ -89,21 +90,32 @@ void App::run(const int port) {
 
             spdlog::trace("New client {} connected {}:{}", new_socket, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 
+            // Create the client
+            if (is_ssl_enabled()) {
+                auto new_client_info = std::make_unique<SslClient>(new_socket, router);
+                if (!new_client_info->handshake(ssl_ctx)) {
+                    spdlog::warn("Failed to handshake client {}", new_socket);
+                    new_client_info->close_connection();
+                    continue;
+                }
+                clients[new_socket] = std::move(new_client_info);
+            } else {
+                auto new_client_info = std::make_unique<SocketClient>(new_socket, router);
+                clients[new_socket] = std::move(new_client_info);
+            }
+
             FD_SET(new_socket, &master_fds);
             if (new_socket > max_sd) {
                 max_sd = new_socket;
             }
-
-            // Create the client
-            auto new_client_info = std::make_unique<Client>(new_socket, router);
-            clients[new_socket] = std::move(new_client_info);
         }
 
         for (int i = 0; i <= max_sd; i++) {
             if (i != sockfd && FD_ISSET(i, &read_fds)) {
                 // Retrieve the client
                 if (auto it = clients.find(i); it != clients.end()) {
-                    if (it->second->read() == DISCONNECTED) {
+                    if (it->second->socket_read() == DISCONNECTED) {
+                        it->second->close_connection();
                         FD_CLR(i, &master_fds);
                         clients.erase(it);
                         break;
@@ -111,37 +123,6 @@ void App::run(const int port) {
                 }
             }
         }
-    }
-}
-
-void App::handle_client(const int &client) const {
-    if (is_ssl_enabled()) {
-        SslConnection connection(client, ssl_ctx);
-
-        if (!connection.handshake()) {
-            connection.close_socket();
-            return;
-        }
-
-        accept_connection(connection);
-    } else {
-        SocketConnection connection(client);
-        accept_connection(connection);
-    }
-}
-
-void App::accept_connection(Connection &connection) const {
-    try {
-        const auto request = connection.socket_read();
-        Response response{};
-
-        router.handle_request(request, response);
-
-        spdlog::info("\"{} {}\" {}", request.get_method(), request.get_url().get_full_url(),
-                     response.get_status_message());
-
-        connection.write_socket(response.build());
-    } catch (const std::runtime_error &e) {
     }
 }
 
