@@ -2,6 +2,7 @@
 
 #include "clients/SocketClient.h"
 #include "clients/SslClient.h"
+#include "event_loops/SelectEventLoop.h"
 
 #include <arpa/inet.h>
 #include <cstdio>
@@ -48,7 +49,7 @@ int create_socket(const int port) {
 
 bool App::is_ssl_enabled() const { return ssl_ctx != nullptr; }
 
-bool App::add_new_client(int new_socket) {
+void App::add_new_client(int new_socket) {
     if (is_ssl_enabled()) {
         auto new_client_info = std::make_unique<SslClient>(new_socket, router);
         new_client_info->handshake(ssl_ctx);
@@ -57,7 +58,7 @@ bool App::add_new_client(int new_socket) {
             new_client_info->close_connection();
             // If the handshake failed, we cannot process the client
             // TODO: Try HTTP instead
-            return false; // Handshake failed
+            return; // Handshake failed
         }
         clients[new_socket] = std::move(new_client_info);
     } else {
@@ -65,89 +66,74 @@ bool App::add_new_client(int new_socket) {
         clients[new_socket] = std::move(new_client_info);
     }
 
-    return true;
+    event_loop->add_fd(new_socket);
 }
 
-void App::handle_client() {
-    for (int i = 0; i <= max_sd; i++) {
-        if (i != sockfd && FD_ISSET(i, &read_fds)) {
-            // Retrieve the client
-            if (auto it = clients.find(i); it != clients.end()) {
-                it->second->socket_read();
+void App::handle_client(const int i) {
+    // Retrieve the client
+    if (const auto it = clients.find(i); it != clients.end()) {
+        it->second->socket_read();
 
-                if (!it->second->is_active()) {
-                    it->second->close_connection();
-                    FD_CLR(i, &master_fds);
-                    clients.erase(it);
-                }
-            } else {
-                spdlog::warn("Client {} has disappeared", i);
-                FD_CLR(i, &master_fds);
-                clients.erase(it);
-            }
+        if (!it->second->is_active()) {
+            event_loop->remove_fd(i);
+            it->second->close_connection();
+            clients.erase(it);
         }
+    } else {
+        spdlog::critical("Client {} has disappeared", i);
+        exit(EXIT_FAILURE);
     }
 }
 
 void App::accept_new() {
-    const auto operation = select(max_sd + 1, &read_fds, nullptr, nullptr, nullptr);
-    if (operation < 0) {
-        const auto error_message = std::strerror(errno);
+    sockaddr_in addr{};
+    uint len = sizeof(addr);
 
-        spdlog::critical("select error: ({}) '{}'", operation, error_message);
-        exit(EXIT_FAILURE);
+    const int new_socket = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
+    if (new_socket < 0) {
+        spdlog::warn("Unable to accept");
+        return;
     }
 
-    if (FD_ISSET(sockfd, &read_fds)) {
-        sockaddr_in addr{};
-        uint len = sizeof(addr);
-
-        const int new_socket = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
-        if (new_socket < 0) {
-            spdlog::warn("Unable to accept");
-            return;
-        }
-
-        // Set new socket to non blocking
-        if (fcntl(new_socket, F_SETFL, O_NONBLOCK) == -1) {
-            spdlog::warn("Unable to fcntl");
-            return;
-        }
-
-        spdlog::trace("New client {} connected {}:{}", new_socket, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-
-        if (add_new_client(new_socket)) {
-            FD_SET(new_socket, &master_fds);
-
-            if (new_socket > max_sd) {
-                max_sd = new_socket;
-            }
-        }
+    // Set new socket to non blocking
+    if (fcntl(new_socket, F_SETFL, O_NONBLOCK) == -1) {
+        spdlog::warn("Unable to fcntl");
+        return;
     }
+
+    spdlog::trace("New client {} connected {}:{}", new_socket, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
+
+    add_new_client(new_socket);
 }
 
 void App::run(const int port) {
-    max_sd = sockfd = create_socket(port);
+    if (event_loop == nullptr) {
+        spdlog::warn("Event loop is not defined, using default one");
+        EventLoop *select_event_loop = new SelectEventLoop();
+        with_event_loop(select_event_loop);
+    }
 
-    FD_ZERO(&master_fds);
-    FD_ZERO(&read_fds);
+    sockfd = create_socket(port);
 
-    FD_SET(sockfd, &master_fds);
+    event_loop->add_fd(sockfd);
 
     spdlog::info("Server {} listening on port {}", sockfd, port);
 
     while (is_running) {
-        read_fds = master_fds;
+        const std::set<int> ready_fds = event_loop->wait_for_events();
 
-        accept_new();
-
-        handle_client();
+        for (const int fd : ready_fds) {
+            if (fd == sockfd) {
+                accept_new();
+            } else {
+                handle_client(fd);
+            }
+        }
     }
 }
 
 void App::close_socket() const {
     close(sockfd);
-
     if (ssl_ctx != nullptr) {
         SSL_CTX_free(ssl_ctx);
     }
@@ -160,4 +146,18 @@ App &App::enable_ssl(const std::string &cert, const std::string &key) {
     configure_context(ssl_ctx, cert.c_str(), key.c_str());
     spdlog::info("SSL is enabled");
     return *this;
+}
+
+App &App::with_event_loop(EventLoop *new_event_loop) {
+    event_loop = new_event_loop;
+    return *this;
+}
+
+App::~App() {
+    is_running = false;
+    if (log_file.is_open()) {
+        log_file.close();
+    }
+    close_socket();
+    delete event_loop;
 }

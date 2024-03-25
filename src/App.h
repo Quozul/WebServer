@@ -4,6 +4,7 @@
 #include "Router.h"
 #include "SslHelpers.h"
 #include "clients/Client.h"
+#include "event_loops/EventLoop.h"
 
 #include <filesystem>
 #include <fstream>
@@ -15,18 +16,13 @@ class App final {
     std::ofstream log_file;
     bool is_running = true;
     std::map<int, std::unique_ptr<Client>> clients;
-    int max_sd{};
-    fd_set master_fds{}, read_fds{};
+    EventLoop *event_loop = nullptr;
 
     [[nodiscard]] bool is_ssl_enabled() const;
 
-    /**
-     * @param new_socket
-     * @return true if the client was added successfully
-     */
-    [[nodiscard]] bool add_new_client(int new_socket);
+    void add_new_client(int new_socket);
 
-    void handle_client();
+    void handle_client(int i);
 
     void accept_new();
 
@@ -39,12 +35,9 @@ class App final {
 
     App &enable_ssl(const std::string &cert, const std::string &key);
 
-    ~App() {
-        if (this->log_file.is_open()) {
-            this->log_file.close();
-        }
-        close_socket();
-    }
+    App &with_event_loop(EventLoop *new_event_loop);
+
+    ~App();
 };
 
 #endif

@@ -1,5 +1,6 @@
 #include "src/App.h"
 #include "src/config.h"
+#include "src/event_loops/EpollEventLoop.h"
 #include "src/request/Request.h"
 #include "src/response/Response.h"
 
@@ -63,6 +64,23 @@ void file_handler(const Request &request, Response &response) {
     response.set_body(response_body);
 }
 
+void echo_handler(const Request &request, Response &response) {
+    response.set_header("content-type", "text/html");
+
+    if (request.get_method() == "POST") {
+        response.set_body(request.get_body().str());
+    } else {
+        const std::string response_body = R"(
+            <form action="/echo" method="post" enctype="plain/text">
+                <input type="text" name="text" />
+                <input type="submit" value="Send" />
+            </form>
+        )";
+
+        response.set_body(response_body);
+    }
+}
+
 void image_handler(const Request &request, Response &response) {
     if (request.get_method() != "POST") {
         response.set_header("content-type", "text/html");
@@ -93,6 +111,7 @@ int main() {
                             .route("/hello", hello_handler)
                             .route("/file", file_handler)
                             .route("/image", image_handler)
+                            .route("/echo", echo_handler)
                             .not_found(not_found_handler);
 
     App app(router);
@@ -108,7 +127,7 @@ int main() {
         app.enable_ssl(cert.value(), key.value());
     }
 
-    app.run(port);
+    app.with_event_loop(new EpollEventLoop()).run(port);
 
     return 0;
 }
