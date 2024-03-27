@@ -64,7 +64,7 @@ std::map<int, std::string> Response::codes = {{100, "Continue"},
                                               {510, "Not Extended"},
                                               {511, "Network Authentication Required"}};
 
-void Response::set_body(const std::string &body) { this->body = body; }
+void Response::set_body(const std::string &new_body) { body_ = new_body; }
 
 void Response::set_header(const std::string &key, const std::string &value) {
     std::string lower_key = key;
@@ -76,18 +76,27 @@ void Response::set_header(const std::string &key, const std::string &value) {
 std::string Response::build() {
     std::string response = "HTTP/1.1 " + get_status_message() + "\r\n";
 
-    this->set_header("content-length", std::to_string(body.length()));
+    if (!body_.empty()) {
+        this->set_header("content-length", std::to_string(body_.size()));
+    }
 
-    for (const auto &[key, value] : this->headers) {
+    for (const auto &[key, value] : headers) {
         response.append(key).append(": ").append(value).append("\r\n");
     }
     response.append("\r\n");
-    response.append(this->body);
+    if (!body_.empty()) {
+        response.append(body_.c_str(), body_.size());
+    }
     return response;
 }
 
-std::string Response::get_status_message() const {
-    return std::to_string(this->response_code) + " " + codes[this->response_code];
+std::string Response::get_body() const { return body_; }
+
+std::string Response::get_status_message() {
+    if (response_code == 0) {
+        response_code = body_.empty() ? 204 : 200;
+    }
+    return std::to_string(response_code) + " " + codes[response_code];
 }
 
-void Response::set_status_code(const int &code) { this->response_code = code; }
+void Response::set_status_code(const int &code) { response_code = code; }

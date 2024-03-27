@@ -3,18 +3,19 @@
 
 #include "Response.h"
 #include <map>
+#include <optional>
 #include <string>
 
 class Response {
-    std::string body;
+    std::string body_;
     std::map<std::string, std::string> headers;
-    int response_code = 200;
+    int response_code = 0;
     static std::map<int, std::string> codes;
 
   public:
     Response() = default;
 
-    void set_body(const std::string &body);
+    void set_body(const std::string &new_body);
 
     void set_header(const std::string &key, const std::string &value);
 
@@ -22,7 +23,9 @@ class Response {
 
     std::string build();
 
-    [[nodiscard]] std::string get_status_message() const;
+    [[nodiscard]] std::string get_body() const;
+
+    [[nodiscard]] std::string get_status_message();
 };
 
 #endif

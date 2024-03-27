@@ -31,7 +31,6 @@ void SocketClient::socket_read() {
 void SocketClient::socket_write(const char *data, const size_t size) { write(socket_, data, size); }
 
 void SocketClient::close_connection() {
-    spdlog::trace("Client {} disconnected", socket_);
     close(socket_);
     is_connected_ = false;
 }

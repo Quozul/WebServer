@@ -40,24 +40,18 @@ Config read_config() {
 
             if (log_level == "trace") {
                 spdlog::set_level(spdlog::level::level_enum::trace);
-                spdlog::trace("Logging level is set to 'trace'");
             } else if (log_level == "debug") {
                 spdlog::set_level(spdlog::level::level_enum::debug);
-                spdlog::debug("Logging level is set to 'debug'");
             } else if (log_level == "warn") {
                 spdlog::set_level(spdlog::level::level_enum::warn);
-                spdlog::warn("Logging level is set to 'warn'");
             } else if (log_level == "err") {
                 spdlog::set_level(spdlog::level::level_enum::err);
-                spdlog::error("Logging level is set to 'err'");
             } else if (log_level == "critical") {
                 spdlog::set_level(spdlog::level::level_enum::critical);
-                spdlog::critical("Logging level is set to 'critical'");
             } else if (log_level == "off") {
                 spdlog::set_level(spdlog::level::level_enum::off);
             } else {
                 spdlog::set_level(spdlog::level::level_enum::info);
-                spdlog::info("Logging level is set to 'info'");
             }
         }
     }

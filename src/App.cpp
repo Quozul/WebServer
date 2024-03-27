@@ -101,16 +101,13 @@ void App::accept_new() {
         return;
     }
 
-    spdlog::trace("New client {} connected {}:{}", new_socket, inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
-
     add_new_client(new_socket);
 }
 
 void App::run(const int port) {
     if (event_loop == nullptr) {
         spdlog::warn("Event loop is not defined, using default one");
-        EventLoop *select_event_loop = new SelectEventLoop();
-        with_event_loop(select_event_loop);
+        with_event_loop(new SelectEventLoop());
     }
 
     sockfd = create_socket(port);

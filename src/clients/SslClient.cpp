@@ -86,7 +86,6 @@ void SslClient::socket_write(const char *data, const size_t size) {
 }
 
 void SslClient::close_connection() {
-    spdlog::trace("Client {} disconnected", socket_);
     SSL_shutdown(ssl_);
     SSL_free(ssl_);
     close(socket_);
