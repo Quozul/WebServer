@@ -15,6 +15,8 @@ class SelectEventLoop final : public EventLoop {
     void remove_fd(int fd) override;
 
     std::set<int> wait_for_events() override;
+
+    void modify_fd([[maybe_unused]] int fd) override {};
 };
 
 #endif

@@ -12,6 +12,7 @@
 #include <spdlog/spdlog.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <thread>
 #include <unistd.h>
 
 int create_socket(const int port) {
@@ -69,7 +70,7 @@ void App::add_new_client(int new_socket) {
     event_loop->add_fd(new_socket);
 }
 
-void App::handle_client(const int i) {
+bool App::handle_client(const int i) {
     // Retrieve the client
     if (const auto it = clients.find(i); it != clients.end()) {
         it->second->socket_read();
@@ -78,11 +79,14 @@ void App::handle_client(const int i) {
             event_loop->remove_fd(i);
             it->second->close_connection();
             clients.erase(it);
+            return false;
         }
     } else {
         spdlog::critical("Client {} has disappeared", i);
         exit(EXIT_FAILURE);
     }
+
+    return true;
 }
 
 void App::accept_new() {
@@ -116,16 +120,34 @@ void App::run(const int port) {
 
     spdlog::info("Server {} listening on port {}", sockfd, port);
 
-    while (is_running) {
-        const std::set<int> ready_fds = event_loop->wait_for_events();
+    const auto num_threads = std::thread::hardware_concurrency();
+    spdlog::info("Starting {} threads", num_threads);
+    std::vector<std::thread> threads;
 
-        for (const int fd : ready_fds) {
-            if (fd == sockfd) {
-                accept_new();
-            } else {
-                handle_client(fd);
+    for (unsigned int i = 0; i < num_threads; ++i) {
+        threads.emplace_back([&] {
+            while (is_running) {
+                const std::set<int> ready_fds = event_loop->wait_for_events();
+
+                for (const int fd : ready_fds) {
+                    bool is_valid = true;
+
+                    if (fd == sockfd) {
+                        accept_new();
+                    } else {
+                        is_valid = handle_client(fd);
+                    }
+
+                    if (is_valid) {
+                        event_loop->modify_fd(fd);
+                    }
+                }
             }
-        }
+        });
+    }
+
+    for (auto &thread : threads) {
+        thread.join();
     }
 }
 

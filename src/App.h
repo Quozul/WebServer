@@ -22,7 +22,7 @@ class App final {
 
     void add_new_client(int new_socket);
 
-    void handle_client(int i);
+    bool handle_client(int i);
 
     void accept_new();
 

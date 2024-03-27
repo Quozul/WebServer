@@ -1,6 +1,9 @@
 #include "EpollEventLoop.h"
 
+#include <iostream>
 #include <spdlog/spdlog.h>
+#include <sys/epoll.h>
+#include <unistd.h>
 
 EpollEventLoop::EpollEventLoop() {
     epoll_fd = epoll_create1(0);
@@ -16,7 +19,7 @@ EpollEventLoop::~EpollEventLoop() { close(epoll_fd); }
 void EpollEventLoop::add_fd(const int fd) {
     epoll_event event{};
     event.data.fd = fd;
-    event.events = EPOLLIN;
+    event.events = EPOLLIN | EPOLLONESHOT;
 
     if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &event) == -1) {
         const auto error_message = std::strerror(errno);
@@ -47,5 +50,17 @@ std::set<int> EpollEventLoop::wait_for_events() {
     for (int i = 0; i < num_events; ++i) {
         ready_fds.insert(events[i].data.fd);
     }
+
     return ready_fds;
+}
+
+void EpollEventLoop::modify_fd(const int fd) {
+    epoll_event event{};
+    event.data.fd = fd;
+    event.events = EPOLLIN | EPOLLONESHOT;
+
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &event) == -1) {
+        perror("epoll_ctl: modify");
+        exit(EXIT_FAILURE);
+    }
 }
