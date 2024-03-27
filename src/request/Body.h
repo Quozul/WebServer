@@ -1,8 +1,6 @@
 #ifndef BODY_H
 #define BODY_H
 
-#include <algorithm>
-#include <cstring>
 #include <iostream>
 
 class Body {
@@ -11,43 +9,15 @@ class Body {
     size_t reserved;
 
   public:
-    explicit Body() : data(nullptr), length(0), reserved(0) { data = new char[reserved]; }
+    explicit Body();
 
-    Body(const Body &other) : data(new char[other.reserved]), length(other.length), reserved(other.reserved) {
-        std::memcpy(data, other.data, reserved);
-    }
+    Body(const Body &other);
 
-    Body &operator=(const Body &other) {
-        if (this != &other) {
-            delete[] data;
-            length = other.length;
-            reserved = other.reserved;
-            data = new char[reserved];
-            std::memcpy(data, other.data, reserved);
-        }
-        return *this;
-    }
+    Body &operator=(const Body &other);
 
-    void reserve(const size_t new_reserved) {
-        const auto new_data = new char[new_reserved + 1];
+    void reserve(size_t new_reserved);
 
-        reserved = new_reserved + 1;
-        length = std::min(length, new_reserved + 1);
-        std::memcpy(new_data, data, length);
-
-        delete[] data;
-        data = new_data;
-    }
-
-    void append(const char *content, const size_t n) {
-        if (length + n > reserved) {
-            reserve(length + n);
-        }
-
-        std::memcpy(data + length, content, n);
-        length += n;
-        data[length] = '\0';
-    }
+    void append(const char *content, size_t n);
 
     [[nodiscard]] char *c_str() const { return data; }
 
@@ -57,11 +27,7 @@ class Body {
 
     [[nodiscard]] size_t get_reserved() const { return reserved; }
 
-    ~Body() {
-        delete[] data;
-        data = nullptr;
-        length = reserved = 0;
-    }
+    ~Body();
 };
 
 #endif
