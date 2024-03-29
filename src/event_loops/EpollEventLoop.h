@@ -4,9 +4,10 @@
 #include "EventLoop.h"
 
 #include <mutex>
+#include <sys/epoll.h>
 
 class EpollEventLoop final : public EventLoop {
-    static constexpr int MAX_EVENTS = 256;
+    static constexpr int MAX_EVENTS = 16;
     int epoll_fd;
     std::mutex mutex_;
 
@@ -19,7 +20,7 @@ class EpollEventLoop final : public EventLoop {
 
     void remove_fd(int fd) override;
 
-    std::set<int> wait_for_events() override;
+    int wait_for_events(epoll_event *events, int max_events) override;
 
     void modify_fd(int fd) override;
 };

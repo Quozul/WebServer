@@ -7,31 +7,33 @@
 #include "event_loops/EventLoop.h"
 
 #include <filesystem>
-#include <fstream>
+#include <mutex>
 
 class App final {
-    const Router &router;
+    const Router &router_;
     int sockfd{};
     SSL_CTX *ssl_ctx = nullptr;
-    std::ofstream log_file;
     bool is_running = true;
     std::map<int, std::unique_ptr<Client>> clients;
-    EventLoop *event_loop = nullptr;
+    EventLoop *event_loop_;
+    std::mutex mutex_;
 
     [[nodiscard]] bool is_ssl_enabled() const;
 
-    void add_new_client(int new_socket);
+    void create_ssl_client(int new_socket);
+
+    void create_socket_client(int new_socket);
 
     bool handle_client(int i);
 
     void accept_new();
 
   public:
-    explicit App(const Router &router) : router(router) {}
+    explicit App(const Router &router) : router_(router) {}
 
     void run(int port);
 
-    void close_socket() const;
+    void close_socket();
 
     App &enable_ssl(const std::string &cert, const std::string &key);
 

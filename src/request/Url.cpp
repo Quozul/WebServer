@@ -2,7 +2,13 @@
 
 #include "Url.h"
 
+#include "../string_manipulation.h"
+
 Url Url::parse(const std::string &raw_url) {
+    if (std::string url_copy = raw_url; trim(url_copy).empty()) {
+        return empty();
+    }
+
     Url url;
     const size_t param_index = raw_url.find('?');
 
@@ -28,6 +34,15 @@ Url Url::parse(const std::string &raw_url) {
     url.params = params;
     url.path = path;
     url.full_url = raw_url;
+
+    return url;
+}
+
+Url Url::empty() {
+    Url url;
+
+    url.path = "/";
+    url.full_url = "/";
 
     return url;
 }

@@ -36,9 +36,8 @@ void EpollEventLoop::remove_fd(const int fd) {
     }
 }
 
-std::set<int> EpollEventLoop::wait_for_events() {
-    epoll_event events[MAX_EVENTS];
-    const int num_events = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
+int EpollEventLoop::wait_for_events(epoll_event *events, const int max_events) {
+    const int num_events = epoll_wait(epoll_fd, events, max_events, -1);
 
     if (num_events == -1) {
         const auto error_message = std::strerror(errno);
@@ -46,12 +45,7 @@ std::set<int> EpollEventLoop::wait_for_events() {
         exit(EXIT_FAILURE);
     }
 
-    std::set<int> ready_fds;
-    for (int i = 0; i < num_events; ++i) {
-        ready_fds.insert(events[i].data.fd);
-    }
-
-    return ready_fds;
+    return num_events;
 }
 
 void EpollEventLoop::modify_fd(const int fd) {

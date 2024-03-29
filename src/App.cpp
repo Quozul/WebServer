@@ -2,12 +2,13 @@
 
 #include "clients/SocketClient.h"
 #include "clients/SslClient.h"
-#include "event_loops/SelectEventLoop.h"
+#include "event_loops/EpollEventLoop.h"
 
 #include <arpa/inet.h>
 #include <cstdio>
 #include <cstdlib>
 #include <fcntl.h>
+#include <malloc.h>
 #include <netinet/in.h>
 #include <spdlog/spdlog.h>
 #include <sys/socket.h>
@@ -50,24 +51,27 @@ int create_socket(const int port) {
 
 bool App::is_ssl_enabled() const { return ssl_ctx != nullptr; }
 
-void App::add_new_client(int new_socket) {
-    if (is_ssl_enabled()) {
-        auto new_client_info = std::make_unique<SslClient>(new_socket, router);
-        new_client_info->handshake(ssl_ctx);
-        if (!new_client_info->is_active()) {
-            spdlog::error("Failed to handshake client {}", new_socket);
-            new_client_info->close_connection();
-            // If the handshake failed, we cannot process the client
-            // TODO: Try HTTP instead
-            return; // Handshake failed
-        }
-        clients[new_socket] = std::move(new_client_info);
-    } else {
-        auto new_client_info = std::make_unique<SocketClient>(new_socket, router);
-        clients[new_socket] = std::move(new_client_info);
+void App::create_ssl_client(int new_socket) {
+    auto new_client_info = std::make_unique<SslClient>(new_socket, router_);
+    new_client_info->handshake(ssl_ctx);
+    if (!new_client_info->is_active()) {
+        new_client_info->close_connection();
+        return; // Handshake failed
     }
+    std::unique_lock lock(mutex_);
+    clients[new_socket] = std::move(new_client_info);
+    lock.unlock();
 
-    event_loop->add_fd(new_socket);
+    event_loop_->add_fd(new_socket);
+}
+
+void App::create_socket_client(int new_socket) {
+    auto new_client_info = std::make_unique<SocketClient>(new_socket, router_);
+    std::unique_lock lock(mutex_);
+    clients[new_socket] = std::move(new_client_info);
+    lock.unlock();
+
+    event_loop_->add_fd(new_socket);
 }
 
 bool App::handle_client(const int i) {
@@ -75,15 +79,18 @@ bool App::handle_client(const int i) {
     if (const auto it = clients.find(i); it != clients.end()) {
         it->second->socket_read();
 
+        std::unique_lock lock(mutex_);
         if (!it->second->is_active()) {
-            event_loop->remove_fd(i);
+            event_loop_->remove_fd(i);
             it->second->close_connection();
             clients.erase(it);
             return false;
         }
+        lock.unlock();
     } else {
         spdlog::critical("Client {} has disappeared", i);
-        exit(EXIT_FAILURE);
+        event_loop_->remove_fd(i);
+        return false;
     }
 
     return true;
@@ -105,31 +112,38 @@ void App::accept_new() {
         return;
     }
 
-    add_new_client(new_socket);
+    if (is_ssl_enabled()) {
+        create_ssl_client(new_socket);
+    } else {
+        create_socket_client(new_socket);
+    }
 }
 
 void App::run(const int port) {
-    if (event_loop == nullptr) {
+    if (event_loop_ == nullptr) {
         spdlog::warn("Event loop is not defined, using default one");
-        with_event_loop(new SelectEventLoop());
+        with_event_loop(new EpollEventLoop());
     }
 
     sockfd = create_socket(port);
 
-    event_loop->add_fd(sockfd);
+    event_loop_->add_fd(sockfd);
 
     spdlog::info("Server {} listening on port {}", sockfd, port);
 
     const auto num_threads = std::thread::hardware_concurrency();
-    spdlog::info("Starting {} threads", num_threads);
+    const int max_events = 256 / static_cast<int>(num_threads);
     std::vector<std::thread> threads;
 
-    for (unsigned int i = 0; i < num_threads; ++i) {
+    for (unsigned int thread = 0; thread < num_threads; ++thread) {
         threads.emplace_back([&] {
-            while (is_running) {
-                const std::set<int> ready_fds = event_loop->wait_for_events();
+            auto *events = new epoll_event[max_events];
 
-                for (const int fd : ready_fds) {
+            while (is_running) {
+                const int num_events = event_loop_->wait_for_events(events, max_events);
+
+                for (int i = 0; i < num_events; ++i) {
+                    const auto fd = events[i].data.fd;
                     bool is_valid = true;
 
                     if (fd == sockfd) {
@@ -139,22 +153,28 @@ void App::run(const int port) {
                     }
 
                     if (is_valid) {
-                        event_loop->modify_fd(fd);
+                        event_loop_->modify_fd(fd);
                     }
                 }
             }
+
+            delete[] events;
         });
     }
+
+    spdlog::info("Starting {} threads", threads.size());
 
     for (auto &thread : threads) {
         thread.join();
     }
+    threads.clear();
 }
 
-void App::close_socket() const {
+void App::close_socket() {
     close(sockfd);
     if (ssl_ctx != nullptr) {
         SSL_CTX_free(ssl_ctx);
+        ssl_ctx = nullptr;
     }
     spdlog::info("Server closed!");
 }
@@ -168,15 +188,13 @@ App &App::enable_ssl(const std::string &cert, const std::string &key) {
 }
 
 App &App::with_event_loop(EventLoop *new_event_loop) {
-    event_loop = new_event_loop;
+    event_loop_ = new_event_loop;
     return *this;
 }
 
 App::~App() {
     is_running = false;
-    if (log_file.is_open()) {
-        log_file.close();
-    }
     close_socket();
-    delete event_loop;
+    delete event_loop_;
+    event_loop_ = nullptr;
 }

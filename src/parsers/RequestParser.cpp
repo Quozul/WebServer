@@ -78,23 +78,15 @@ size_t RequestParser::get_content_length() const {
 bool RequestParser::has_body() const { return expected_body_size != 0; }
 
 void parse_status_line(Request &request, const std::string &status_line) {
-    size_t j = 0, prev = 0;
+    const size_t method_end = status_line.find(' ');
+    const size_t protocol_start = status_line.rfind(' ');
 
-    while (j++ < 4) {
-        const size_t i = status_line.find(' ', prev);
-        const auto match = status_line.substr(prev, i - prev);
-        switch (j) {
-        case 1:
-            request.method = match;
-            break;
-        case 2:
-            request.url = Url::parse(match);
-            break;
-        case 3:
-            request.protocol = match;
-        default:
-            break;
-        }
-        prev = i + 1;
+    if (method_end == protocol_start) {
+        request.url = Url::empty();
+    } else {
+        request.url = Url::parse(status_line.substr(method_end + 1, protocol_start - method_end - 1));
     }
+
+    request.method = status_line.substr(0, method_end);
+    request.protocol = status_line.substr(protocol_start + 1);
 }

@@ -29,3 +29,42 @@ TEST(UrlTest, ShouldParseCompleteUrl) {
     EXPECT_STREQ(url.get_param("foo").value().c_str(), "bar");
     EXPECT_STREQ(url.get_param("baz").value().c_str(), "");
 }
+
+TEST(UrlTest, ShouldParseEmptyUrl) {
+    // Given
+    const std::string url_string;
+
+    // When
+    const auto url = Url::parse(url_string);
+
+    // Then
+    EXPECT_STREQ(url.get_path().c_str(), "/");
+    EXPECT_STREQ(url.get_full_url().c_str(), "/");
+    EXPECT_EQ(url.get_params().size(), 0);
+}
+
+TEST(UrlTest, ShouldParseSpaceUrl) {
+    // Given
+    const std::string url_string = " ";
+
+    // When
+    const auto url = Url::parse(url_string);
+
+    // Then
+    EXPECT_STREQ(url.get_path().c_str(), "/");
+    EXPECT_STREQ(url.get_full_url().c_str(), "/");
+    EXPECT_EQ(url.get_params().size(), 0);
+}
+
+TEST(UrlTest, ShouldParseSeveralSpaceUrl) {
+    // Given
+    const std::string url_string = "        ";
+
+    // When
+    const auto url = Url::parse(url_string);
+
+    // Then
+    EXPECT_STREQ(url.get_path().c_str(), "/");
+    EXPECT_STREQ(url.get_full_url().c_str(), "/");
+    EXPECT_EQ(url.get_params().size(), 0);
+}

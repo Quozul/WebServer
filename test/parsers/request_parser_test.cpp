@@ -45,6 +45,38 @@ TEST(RequestParserTest, ShouldParseGET11HTTPRequest) {
     EXPECT_FALSE(parser.has_more());
 }
 
+TEST(RequestParserTest, ShouldGetWithNoUrl) {
+    // Given
+    const std::string request_string = "GET HTTP/1.1\r\n\r\n";
+    auto parser = RequestParser{};
+
+    // When
+    parser.append_content(request_string);
+    const auto request = parser.request;
+
+    // Then
+    EXPECT_STREQ(request.method.c_str(), "GET");
+    EXPECT_STREQ(request.url.get_full_url().c_str(), "/");
+    EXPECT_STREQ(request.protocol.c_str(), "HTTP/1.1");
+    EXPECT_FALSE(parser.has_more());
+}
+
+TEST(RequestParserTest, ShouldGetWithSpaceUrl) {
+    // Given
+    const std::string request_string = "GET  HTTP/1.1\r\n\r\n";
+    auto parser = RequestParser{};
+
+    // When
+    parser.append_content(request_string);
+    const auto request = parser.request;
+
+    // Then
+    EXPECT_STREQ(request.method.c_str(), "GET");
+    EXPECT_STREQ(request.url.get_full_url().c_str(), "/");
+    EXPECT_STREQ(request.protocol.c_str(), "HTTP/1.1");
+    EXPECT_FALSE(parser.has_more());
+}
+
 TEST(RequestParserTest, ShouldParseRequestWithHeaders) {
     // Given
     const std::string request_string = "GET / HTTP/1.0\r\nuser-agent: Mozilla/5.0 (X11; Linux x86_64; "
