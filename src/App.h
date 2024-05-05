@@ -15,18 +15,17 @@ class App final {
     SSL_CTX *ssl_ctx = nullptr;
     bool is_running = true;
     std::map<int, std::unique_ptr<Client>> clients;
-    EventLoop *event_loop_;
     std::mutex mutex_;
 
     [[nodiscard]] bool is_ssl_enabled() const;
 
-    void create_ssl_client(int new_socket);
+    void create_ssl_client(EventLoop& event_loop, int new_socket);
 
-    void create_socket_client(int new_socket);
+    void create_socket_client(EventLoop& event_loop, int new_socket);
 
-    bool handle_client(int i);
+    bool handle_client(EventLoop& event_loop, int i);
 
-    void accept_new();
+    void accept_new(EventLoop& event_loop);
 
   public:
     explicit App(const Router &router) : router_(router) {}
@@ -36,8 +35,6 @@ class App final {
     void close_socket();
 
     App &enable_ssl(const std::string &cert, const std::string &key);
-
-    App &with_event_loop(EventLoop *new_event_loop);
 
     ~App();
 };

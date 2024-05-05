@@ -7,9 +7,7 @@
 #include <sys/epoll.h>
 
 class EpollEventLoop final : public EventLoop {
-    static constexpr int MAX_EVENTS = 16;
     int epoll_fd;
-    std::mutex mutex_;
 
   public:
     EpollEventLoop();

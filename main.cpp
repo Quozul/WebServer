@@ -127,7 +127,7 @@ int main() {
         app.enable_ssl(cert.value(), key.value());
     }
 
-    app.with_event_loop(new EpollEventLoop()).run(port);
+    app.run(port);
 
     return 0;
 }

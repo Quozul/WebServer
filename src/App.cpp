@@ -48,7 +48,7 @@ int create_socket(const int port) {
 
 bool App::is_ssl_enabled() const { return ssl_ctx != nullptr; }
 
-void App::create_ssl_client(int new_socket) {
+void App::create_ssl_client(EventLoop& event_loop, int new_socket) {
     auto new_client_info = std::make_unique<SslClient>(new_socket, router_);
     new_client_info->handshake(ssl_ctx);
     if (!new_client_info->is_active()) {
@@ -59,26 +59,26 @@ void App::create_ssl_client(int new_socket) {
     clients[new_socket] = std::move(new_client_info);
     lock.unlock();
 
-    event_loop_->add_fd(new_socket);
+    event_loop.add_fd(new_socket);
 }
 
-void App::create_socket_client(int new_socket) {
+void App::create_socket_client(EventLoop& event_loop, int new_socket) {
     auto new_client_info = std::make_unique<SocketClient>(new_socket, router_);
     std::unique_lock lock(mutex_);
     clients[new_socket] = std::move(new_client_info);
     lock.unlock();
 
-    event_loop_->add_fd(new_socket);
+    event_loop.add_fd(new_socket);
 }
 
-bool App::handle_client(const int i) {
+bool App::handle_client(EventLoop& event_loop, const int i) {
     // Retrieve the client
     if (const auto it = clients.find(i); it != clients.end()) {
         it->second->socket_read();
 
         std::unique_lock lock(mutex_);
         if (!it->second->is_active()) {
-            event_loop_->remove_fd(i);
+            event_loop.remove_fd(i);
             it->second->close_connection();
             clients.erase(it);
             return false;
@@ -86,14 +86,14 @@ bool App::handle_client(const int i) {
         lock.unlock();
     } else {
         spdlog::critical("Client {} has disappeared", i);
-        event_loop_->remove_fd(i);
+        event_loop.remove_fd(i);
         return false;
     }
 
     return true;
 }
 
-void App::accept_new() {
+void App::accept_new(EventLoop& event_loop) {
     sockaddr_in addr{};
     uint len = sizeof(addr);
 
@@ -110,47 +110,43 @@ void App::accept_new() {
     }
 
     if (is_ssl_enabled()) {
-        create_ssl_client(new_socket);
+        create_ssl_client(event_loop, new_socket);
     } else {
-        create_socket_client(new_socket);
+        create_socket_client(event_loop, new_socket);
     }
 }
 
 void App::run(const int port) {
-    if (event_loop_ == nullptr) {
-        spdlog::warn("Event loop is not defined, using default one");
-        with_event_loop(new EpollEventLoop());
-    }
-
     sockfd = create_socket(port);
-
-    event_loop_->add_fd(sockfd);
 
     spdlog::info("Server {} listening on port {}", sockfd, port);
 
     const auto num_threads = std::thread::hardware_concurrency();
-    const int max_events = 256 / static_cast<int>(num_threads);
+    const int max_events = 256;
     std::vector<std::thread> threads;
 
     for (unsigned int thread = 0; thread < num_threads; ++thread) {
         threads.emplace_back([&] {
+            auto event_loop = EpollEventLoop();
+            event_loop.add_fd(sockfd);
+
             auto *events = new epoll_event[max_events];
 
             while (is_running) {
-                const int num_events = event_loop_->wait_for_events(events, max_events);
+                const int num_events = event_loop.wait_for_events(events, max_events);
 
                 for (int i = 0; i < num_events; ++i) {
                     const auto fd = events[i].data.fd;
                     bool is_valid = true;
 
                     if (fd == sockfd) {
-                        accept_new();
+                        accept_new(event_loop);
                     } else {
-                        is_valid = handle_client(fd);
+                        is_valid = handle_client(event_loop, fd);
                     }
 
                     if (is_valid) {
-                        event_loop_->modify_fd(fd);
+                        event_loop.modify_fd(fd);
                     }
                 }
             }
@@ -184,14 +180,7 @@ App &App::enable_ssl(const std::string &cert, const std::string &key) {
     return *this;
 }
 
-App &App::with_event_loop(EventLoop *new_event_loop) {
-    event_loop_ = new_event_loop;
-    return *this;
-}
-
 App::~App() {
     is_running = false;
     close_socket();
-    delete event_loop_;
-    event_loop_ = nullptr;
 }
