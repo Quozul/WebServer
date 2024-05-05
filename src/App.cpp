@@ -4,11 +4,8 @@
 #include "clients/SslClient.h"
 #include "event_loops/EpollEventLoop.h"
 
-#include <arpa/inet.h>
-#include <cstdio>
 #include <cstdlib>
 #include <fcntl.h>
-#include <malloc.h>
 #include <netinet/in.h>
 #include <spdlog/spdlog.h>
 #include <sys/socket.h>

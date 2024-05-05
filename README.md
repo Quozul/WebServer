@@ -17,6 +17,8 @@ make -j$(nproc)
 
 ### Configuration file
 
+The web server searches for a file named `config` in the current working directory.
+
 The configuration file is optional but can be used to configure the following values:
 
 ```yaml
