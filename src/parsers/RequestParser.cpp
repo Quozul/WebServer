@@ -77,6 +77,11 @@ size_t RequestParser::get_content_length() const {
 
 bool RequestParser::has_body() const { return expected_body_size != 0; }
 
+bool RequestParser::is_keep_alive() const {
+    const auto connection = request.get_header("connection");
+    return connection == "keep-alive";
+}
+
 void parse_status_line(Request &request, const std::string &status_line) {
     const size_t method_end = status_line.find(' ');
     const size_t protocol_start = status_line.rfind(' ');

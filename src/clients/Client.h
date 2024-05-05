@@ -2,8 +2,6 @@
 #define CLIENT_H
 
 #define BUFFER_SIZE 16'384
-#define DISCONNECTED 1
-#define STILL_HERE 0
 
 #include <cstddef>
 

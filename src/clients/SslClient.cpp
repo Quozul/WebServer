@@ -44,6 +44,7 @@ void SslClient::socket_read() {
 
         const RequestParser new_parser{};
         parser_ = new_parser;
+        is_connected_ = parser_.is_keep_alive();
     }
 
     const auto ssl_error = SSL_get_error(ssl_, bytes_received);

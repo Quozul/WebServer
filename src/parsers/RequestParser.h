@@ -29,6 +29,8 @@ class RequestParser {
     [[nodiscard]] size_t get_content_length() const;
 
     [[nodiscard]] bool has_body() const;
+
+    [[nodiscard]] bool is_keep_alive() const;
 };
 
 void parse_status_line(Request &request, const std::string &status_line);
