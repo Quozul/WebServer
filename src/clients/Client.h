@@ -11,7 +11,7 @@ class Client {
 
     virtual ~Client() = default;
 
-    virtual void socket_read() = 0;
+    virtual bool socket_read() = 0;
 
     virtual void socket_write(const char *data, size_t size) = 0;
 

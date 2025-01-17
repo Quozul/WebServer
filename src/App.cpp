@@ -48,7 +48,7 @@ int create_socket(const int port) {
 
 bool App::is_ssl_enabled() const { return ssl_ctx != nullptr; }
 
-void App::create_ssl_client(EventLoop& event_loop, int new_socket) {
+void App::create_ssl_client(EventLoop &event_loop, int new_socket) {
     auto new_client_info = std::make_unique<SslClient>(new_socket, router_);
     new_client_info->handshake(ssl_ctx);
     if (!new_client_info->is_active()) {
@@ -62,7 +62,7 @@ void App::create_ssl_client(EventLoop& event_loop, int new_socket) {
     event_loop.add_fd(new_socket);
 }
 
-void App::create_socket_client(EventLoop& event_loop, int new_socket) {
+void App::create_socket_client(EventLoop &event_loop, int new_socket) {
     auto new_client_info = std::make_unique<SocketClient>(new_socket, router_);
     std::unique_lock lock(mutex_);
     clients[new_socket] = std::move(new_client_info);
@@ -71,7 +71,7 @@ void App::create_socket_client(EventLoop& event_loop, int new_socket) {
     event_loop.add_fd(new_socket);
 }
 
-bool App::handle_client(EventLoop& event_loop, const int i) {
+bool App::handle_client(EventLoop &event_loop, const int i) {
     // Retrieve the client
     if (const auto it = clients.find(i); it != clients.end()) {
         it->second->socket_read();
@@ -93,7 +93,7 @@ bool App::handle_client(EventLoop& event_loop, const int i) {
     return true;
 }
 
-void App::accept_new(EventLoop& event_loop) {
+void App::accept_new(EventLoop &event_loop) {
     sockaddr_in addr{};
     uint len = sizeof(addr);
 
@@ -121,46 +121,33 @@ void App::run(const int port) {
 
     spdlog::info("Server {} listening on port {}", sockfd, port);
 
-    const auto num_threads = std::thread::hardware_concurrency();
     const int max_events = 256;
-    std::vector<std::thread> threads;
 
-    for (unsigned int thread = 0; thread < num_threads; ++thread) {
-        threads.emplace_back([&] {
-            auto event_loop = EpollEventLoop();
-            event_loop.add_fd(sockfd);
+    auto event_loop = EpollEventLoop();
+    event_loop.add_fd(sockfd);
 
-            auto *events = new epoll_event[max_events];
+    auto *events = new epoll_event[max_events];
 
-            while (is_running) {
-                const int num_events = event_loop.wait_for_events(events, max_events);
+    while (is_running) {
+        const int num_events = event_loop.wait_for_events(events, max_events);
 
-                for (int i = 0; i < num_events; ++i) {
-                    const auto fd = events[i].data.fd;
-                    bool is_valid = true;
+        for (int i = 0; i < num_events; ++i) {
+            const auto fd = events[i].data.fd;
+            bool is_valid = true;
 
-                    if (fd == sockfd) {
-                        accept_new(event_loop);
-                    } else {
-                        is_valid = handle_client(event_loop, fd);
-                    }
-
-                    if (is_valid) {
-                        event_loop.modify_fd(fd);
-                    }
-                }
+            if (fd == sockfd) {
+                accept_new(event_loop);
+            } else {
+                is_valid = handle_client(event_loop, fd);
             }
 
-            delete[] events;
-        });
+            if (is_valid) {
+                event_loop.modify_fd(fd);
+            }
+        }
     }
 
-    spdlog::info("Starting {} threads", threads.size());
-
-    for (auto &thread : threads) {
-        thread.join();
-    }
-    threads.clear();
+    delete[] events;
 }
 
 void App::close_socket() {
