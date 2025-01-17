@@ -27,7 +27,7 @@ int create_socket(const int port) {
     }
 
     if (bind(sockfd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0) {
-        spdlog::critical("Unable to bind port {}", addr.sin_port);
+        spdlog::critical("Unable to bind port {}", port);
         exit(EXIT_FAILURE);
     }
 
@@ -48,27 +48,24 @@ int create_socket(const int port) {
 
 bool App::is_ssl_enabled() const { return ssl_ctx != nullptr; }
 
-void App::create_ssl_client(EventLoop &event_loop, int new_socket) {
+void App::create_ssl_client(int new_socket) {
     auto new_client_info = std::make_unique<SslClient>(new_socket, router_);
     new_client_info->handshake(ssl_ctx);
     if (!new_client_info->is_active()) {
+        // TODO: We probably want to redirect the user to https instead of closing the connection
         new_client_info->close_connection();
-        return; // Handshake failed
+        throw std::runtime_error("handshake failed");
     }
-    std::unique_lock lock(mutex_);
+    std::unique_lock lock(clients_mutex_);
     clients[new_socket] = std::move(new_client_info);
     lock.unlock();
-
-    event_loop.add_fd(new_socket);
 }
 
-void App::create_socket_client(EventLoop &event_loop, int new_socket) {
+void App::create_socket_client(int new_socket) {
     auto new_client_info = std::make_unique<SocketClient>(new_socket, router_);
-    std::unique_lock lock(mutex_);
+    std::unique_lock lock(clients_mutex_);
     clients[new_socket] = std::move(new_client_info);
     lock.unlock();
-
-    event_loop.add_fd(new_socket);
 }
 
 bool App::handle_client(EventLoop &event_loop, const int i) {
@@ -76,7 +73,7 @@ bool App::handle_client(EventLoop &event_loop, const int i) {
     if (const auto it = clients.find(i); it != clients.end()) {
         it->second->socket_read();
 
-        std::unique_lock lock(mutex_);
+        std::unique_lock lock(clients_mutex_);
         if (!it->second->is_active()) {
             event_loop.remove_fd(i);
             it->second->close_connection();
@@ -99,21 +96,21 @@ void App::accept_new(EventLoop &event_loop) {
 
     const int new_socket = accept(sockfd, reinterpret_cast<struct sockaddr *>(&addr), &len);
     if (new_socket < 0) {
-        spdlog::warn("Unable to accept");
-        return;
+        throw std::runtime_error("unable to accept new connection");
     }
 
-    // Set new socket to non blocking
+    // Set new socket to non-blocking
     if (fcntl(new_socket, F_SETFL, O_NONBLOCK) == -1) {
-        spdlog::warn("Unable to fcntl");
-        return;
+        throw std::runtime_error("unable to set the connection to non-blocking");
     }
 
     if (is_ssl_enabled()) {
-        create_ssl_client(event_loop, new_socket);
+        create_ssl_client(new_socket);
     } else {
-        create_socket_client(event_loop, new_socket);
+        create_socket_client(new_socket);
     }
+
+    event_loop.add_fd(new_socket);
 }
 
 void App::run(const int port) {
@@ -136,7 +133,11 @@ void App::run(const int port) {
             bool is_valid = true;
 
             if (fd == sockfd) {
-                accept_new(event_loop);
+                try {
+                    accept_new(event_loop);
+                } catch (const std::exception &e) {
+                    spdlog::warn("Unable to accept client: '{}'", e.what());
+                }
             } else {
                 is_valid = handle_client(event_loop, fd);
             }

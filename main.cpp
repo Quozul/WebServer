@@ -21,7 +21,7 @@ void index_handler([[maybe_unused]] const Request &request, Response &response) 
     response.set_header("content-type", "text/html");
     response.set_body(R"(
         This is a custom web server developed in C++.
-        Try the other route <a href='/hello'>/hello</a> or <a href='/file'>file upload</a>.
+        Try the other route <a href="/hello">/hello</a> or <a href="/file">file upload</a>.
     )");
 }
 
@@ -29,8 +29,8 @@ void not_found_handler(const Request &request, Response &response) {
     response.set_header("content-type", "text/html");
     response.set_body(fmt::format(
         R"(
-            The page "{}" you have requestes does not exists.
-            <a href='/'>Go to home</a>.
+            The page "{}" you have requested does not exists.
+            <a href="/">Go to home</a>.
         )",
         request.url.get_path()));
 }
@@ -53,7 +53,7 @@ void file_handler(const Request &request, Response &response) {
             <input type="file" name="file" multiple />
             <input type="submit" value="Upload" />
         </form>
-        The file(s) are not saved. Try <a href='/image'>image upload</a> as well.
+        The file(s) are not saved. Try <a href="/image">image upload</a> as well.
     )";
 
     if (request.get_method() == "POST") {
@@ -86,18 +86,19 @@ void image_handler(const Request &request, Response &response) {
         response.set_header("content-type", "text/html");
         response.set_body(R"(
             <form action="/image" method="post" enctype="multipart/form-data">
-                <input type="file" name="file" accept="image/jpg" />
+                <input type="file" name="file" accept="image/jpeg" />
                 <input type="submit" value="Upload" />
             </form>
-            The file(s) are not saved. Try <a href='/file'>file upload</a> as well.
+            The file(s) are not saved. Try <a href="/file">file upload</a> as well.
         )");
     } else {
         const auto content = request.get_body().str();
+        // Quick hack to parse the multipart form data
         const size_t pos = content.find("image/jpeg", 0) + 14;
 
         if (pos != std::string::npos) {
             const auto sub = content.substr(pos);
-            response.set_header("content-type", "image/jpg");
+            response.set_header("content-type", "image/jpeg");
             response.set_body(sub);
         } else {
             response.set_status_code(406);
@@ -107,12 +108,12 @@ void image_handler(const Request &request, Response &response) {
 
 int main() {
     const auto router = Router()
-                            .route("/", index_handler)
-                            .route("/hello", hello_handler)
-                            .route("/file", file_handler)
-                            .route("/image", image_handler)
-                            .route("/echo", echo_handler)
-                            .not_found(not_found_handler);
+            .route("/", index_handler)
+            .route("/hello", hello_handler)
+            .route("/file", file_handler)
+            .route("/image", image_handler)
+            .route("/echo", echo_handler)
+            .not_found(not_found_handler);
 
     App app(router);
     g_app = &app;

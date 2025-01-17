@@ -14,21 +14,22 @@ class App final {
     int sockfd{};
     SSL_CTX *ssl_ctx = nullptr;
     bool is_running = true;
-    std::map<int, std::unique_ptr<Client>> clients;
-    std::mutex mutex_;
+    std::map<int, std::unique_ptr<Client> > clients;
+    std::mutex clients_mutex_;
 
     [[nodiscard]] bool is_ssl_enabled() const;
 
-    void create_ssl_client(EventLoop& event_loop, int new_socket);
+    void create_ssl_client(int new_socket);
 
-    void create_socket_client(EventLoop& event_loop, int new_socket);
+    void create_socket_client(int new_socket);
 
-    bool handle_client(EventLoop& event_loop, int i);
+    bool handle_client(EventLoop &event_loop, int i);
 
-    void accept_new(EventLoop& event_loop);
+    void accept_new(EventLoop &event_loop);
 
-  public:
-    explicit App(const Router &router) : router_(router) {}
+public:
+    explicit App(const Router &router) : router_(router) {
+    }
 
     void run(int port);
 
