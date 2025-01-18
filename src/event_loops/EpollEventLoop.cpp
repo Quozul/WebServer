@@ -41,8 +41,8 @@ int EpollEventLoop::wait_for_events(epoll_event *events, const int max_events) {
 
     if (num_events == -1) {
         const auto error_message = std::strerror(errno);
-        spdlog::critical("epoll_wait error: '{}'", error_message);
-        exit(EXIT_FAILURE);
+        spdlog::error("epoll_wait error: '{}'", error_message);
+        return -1;
     }
 
     return num_events;

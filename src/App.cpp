@@ -26,6 +26,23 @@ int create_socket(const int port) {
         exit(EXIT_FAILURE);
     }
 
+    int optval = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0) {
+        spdlog::critical("Failed to set SO_REUSEADDR: {}", strerror(errno));
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) < 0) {
+        spdlog::critical("Failed to set SO_REUSEPORT: {}", strerror(errno));
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+    if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval)) < 0) {
+        spdlog::critical("Failed to set SO_KEEPALIVE: {}", strerror(errno));
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
     if (bind(sockfd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0) {
         spdlog::critical("Unable to bind port {}", port);
         exit(EXIT_FAILURE);
@@ -35,8 +52,6 @@ int create_socket(const int port) {
         spdlog::critical("Unable to listen");
         exit(EXIT_FAILURE);
     }
-
-    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT | SO_KEEPALIVE, nullptr, 0);
 
     if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1) {
         spdlog::critical("Unable to set socket to non blocking");
@@ -118,7 +133,7 @@ void App::run(const int port) {
 
     spdlog::info("Server {} listening on port {}", sockfd, port);
 
-    const int max_events = 256;
+    constexpr int max_events = 256;
 
     auto event_loop = EpollEventLoop();
     event_loop.add_fd(sockfd);
@@ -127,6 +142,9 @@ void App::run(const int port) {
 
     while (is_running) {
         const int num_events = event_loop.wait_for_events(events, max_events);
+        if (num_events < 0) {
+            break;
+        }
 
         for (int i = 0; i < num_events; ++i) {
             const auto fd = events[i].data.fd;
@@ -149,10 +167,15 @@ void App::run(const int port) {
     }
 
     delete[] events;
+    close_socket();
 }
 
 void App::close_socket() {
-    close(sockfd);
+    if (sockfd >= 0) {
+        shutdown(sockfd, SHUT_RDWR);
+        close(sockfd);
+        sockfd = -1;
+    }
     if (ssl_ctx != nullptr) {
         SSL_CTX_free(ssl_ctx);
         ssl_ctx = nullptr;
@@ -168,7 +191,11 @@ App &App::enable_ssl(const std::string &cert, const std::string &key) {
     return *this;
 }
 
+App &App::with_shutdown(const std::atomic<bool> *atomic) {
+    is_running = atomic;
+    return *this;
+}
+
 App::~App() {
     is_running = false;
-    close_socket();
 }

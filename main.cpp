@@ -8,13 +8,10 @@
 #include <fmt/core.h>
 #include <spdlog/spdlog.h>
 
-App *g_app;
+std::atomic<bool> is_running(true);
 
 void signal_handler(int) {
-    if (g_app) {
-        g_app->close_socket();
-        std::exit(0);
-    }
+    is_running = false;
 }
 
 void index_handler([[maybe_unused]] const Request &request, Response &response) {
@@ -116,7 +113,6 @@ int main() {
             .not_found(not_found_handler);
 
     App app(router);
-    g_app = &app;
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);
     std::signal(SIGABRT, signal_handler);
@@ -128,7 +124,7 @@ int main() {
         app.enable_ssl(cert.value(), key.value());
     }
 
-    app.run(port);
+    app.with_shutdown(&is_running).run(port);
 
-    return 0;
+    return EXIT_SUCCESS;
 }

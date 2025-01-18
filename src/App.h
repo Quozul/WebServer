@@ -1,6 +1,8 @@
 #ifndef APP_H
 #define APP_H
 
+#include <atomic>
+
 #include "Router.h"
 #include "SslHelpers.h"
 #include "clients/Client.h"
@@ -13,9 +15,9 @@ class App final {
     const Router &router_;
     int sockfd{};
     SSL_CTX *ssl_ctx = nullptr;
-    bool is_running = true;
     std::map<int, std::unique_ptr<Client> > clients;
     std::mutex clients_mutex_;
+    std::atomic<bool> is_running{true};
 
     [[nodiscard]] bool is_ssl_enabled() const;
 
@@ -36,6 +38,8 @@ public:
     void close_socket();
 
     App &enable_ssl(const std::string &cert, const std::string &key);
+
+    App &with_shutdown(const std::atomic<bool> *atomic);
 
     ~App();
 };
