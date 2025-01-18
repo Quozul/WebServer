@@ -1,9 +1,20 @@
 services:
   web:
     build: .
-    volumes:
-      - "./build/config:/src/app/config"
-      - "./build/key.pem:/src/app/key.pem"
-      - "./build/cert.pem:/src/app/cert.pem"
+    image: ghcr.io/quozul/webserver:master
     ports:
       - "8080:8080"
+    configs:
+      - source: app_config
+        target: /app/config
+        uid: "1001"
+        gid: "1001"
+        mode: 0440
+
+configs:
+  app_config:
+    content: |
+      port: 8080 # defaults to "8080"
+      log_level: warn # defaults to "info"
+      #cert: cert.pem
+      #key: key.pem
