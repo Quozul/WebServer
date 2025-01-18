@@ -29,6 +29,19 @@ TEST(RequestParserTest, ShouldBeIncompleteWhenEmpty) {
     EXPECT_TRUE(parser.has_more());
 }
 
+TEST(RequestParserTest, ShouldBeIncompleteWhenAppendingEmptyString) {
+    // Given
+    auto parser = RequestParser{};
+
+    // When
+    parser.append_content("");
+
+    // Then
+    EXPECT_EQ(parser.get_state(), Status);
+    EXPECT_EQ(parser.remaining_bytes(), -1);
+    EXPECT_TRUE(parser.has_more());
+}
+
 TEST(RequestParserTest, ShouldParseGET11HTTPRequest) {
     // Given
     const std::string request_string = "GET /hello HTTP/1.1\r\n\r\n";
@@ -80,7 +93,7 @@ TEST(RequestParserTest, ShouldGetWithSpaceUrl) {
 TEST(RequestParserTest, ShouldParseRequestWithHeaders) {
     // Given
     const std::string request_string = "GET / HTTP/1.0\r\nuser-agent: Mozilla/5.0 (X11; Linux x86_64; "
-                                       "rv:10.0.12) Gecko/20130109 Firefox/10.0.12";
+            "rv:10.0.12) Gecko/20130109 Firefox/10.0.12";
     auto parser = RequestParser{};
 
     // When
@@ -99,7 +112,7 @@ TEST(RequestParserTest, ShouldParseRequestWithHeaders) {
 TEST(RequestParserTest, ShouldParseRequestWithHeadersWithBodyStart) {
     // Given
     const std::string request_string = "GET / HTTP/1.0\r\nuser-agent: Mozilla/5.0 (X11; Linux x86_64; "
-                                       "rv:10.0.12) Gecko/20130109 Firefox/10.0.12\r\n\r\n";
+            "rv:10.0.12) Gecko/20130109 Firefox/10.0.12\r\n\r\n";
     auto parser = RequestParser{};
 
     // When
@@ -118,9 +131,9 @@ TEST(RequestParserTest, ShouldParseRequestWithHeadersWithBodyStart) {
 TEST(RequestParserTest, ShouldHandleCompleteRequest) {
     // Given
     const std::string request_string = "POST /submit-form?foo=bar&baz HTTP/1.1\r\nHost: "
-                                       "example.com\r\nContent-Type: "
-                                       "application/x-www-form-urlencoded\r\nContent-Length: "
-                                       "33\r\n\r\nusername=johndoe&password=secret\n";
+            "example.com\r\nContent-Type: "
+            "application/x-www-form-urlencoded\r\nContent-Length: "
+            "33\r\n\r\nusername=johndoe&password=secret\n";
     auto parser = RequestParser{};
 
     // When

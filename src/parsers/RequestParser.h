@@ -17,7 +17,7 @@ class RequestParser {
     size_t expected_body_size = 0;
     bool has_already_appended_content = false;
 
-  public:
+public:
     Request request;
 
     void append_content(const std::string &content);
@@ -31,6 +31,8 @@ class RequestParser {
     [[nodiscard]] bool has_body() const;
 
     [[nodiscard]] bool is_keep_alive() const;
+
+    [[nodiscard]] ParsingState get_state() const;
 };
 
 void parse_status_line(Request &request, const std::string &status_line);

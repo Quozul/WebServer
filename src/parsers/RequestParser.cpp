@@ -9,6 +9,10 @@
 #define CRLF_CRLF "\r\n\r\n"
 
 void RequestParser::append_content(const std::string &content) {
+    if (content.empty()) {
+        return;
+    }
+
     has_already_appended_content = true;
     bool skip = false;
 
@@ -80,6 +84,10 @@ bool RequestParser::has_body() const { return expected_body_size != 0; }
 bool RequestParser::is_keep_alive() const {
     const auto connection = request.get_header("connection");
     return connection == "keep-alive";
+}
+
+ParsingState RequestParser::get_state() const {
+    return state;
 }
 
 void parse_status_line(Request &request, const std::string &status_line) {
